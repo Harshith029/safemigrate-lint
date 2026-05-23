@@ -14,5 +14,6 @@ from . import concurrent_index_create_required  # noqa: F401
 from . import drop_column_restricted  # noqa: F401
 from . import drop_table_restricted  # noqa: F401
 from . import rename_column_warning  # noqa: F401
+from . import rename_table_warning  # noqa: F401
 
 __all__ = ["RULES", "Rule", "RuleContext", "register_rule"]
