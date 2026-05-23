@@ -17,26 +17,36 @@ from .state import MigrationState
 def analyze(result: ParseResult, state: MigrationState) -> list[Finding]:
     """Run all registered rules over the parsed statements.
 
+    Inline `-- safemigrate:ignore=<rule>` comments are honored: findings from
+    the named rules on the statement immediately following the comment are
+    dropped before this function returns.
+
     Severity filtering is the caller's responsibility (CLI handles it).
     On parse failure, returns the single syntax-error Finding the parser emitted.
     """
     # Import lazily so that registration happens before we read RULES, and so
     # tests can mock rules without import-order surprises.
     from ..rules import RULES, RuleContext
+    from .suppressor import parse_inline_ignores
 
     if result.statements is None:
         return [result.finding] if result.finding else []
 
+    suppressions = parse_inline_ignores(result.sql, result.statements)
+
     findings: list[Finding] = []
     for raw_stmt in result.statements:
         inner = getattr(raw_stmt, "stmt", raw_stmt)
-        # pglast's RawStmt.stmt_location is 0-indexed byte offset; we convert to 1-indexed
+        # pglast's RawStmt.stmt_location is 0-indexed byte offset; convert to 1-indexed
         # to match conventional file positions.
         raw_offset = getattr(raw_stmt, "stmt_location", None) or 0
         offset = raw_offset + 1 if raw_offset is not None else 1
         ctx = RuleContext(file=result.file, sql=result.sql, statement_offset=offset)
+        stmt_suppressions = suppressions.get(offset, frozenset())
 
         for rule in _applicable_rules(RULES, inner):
+            if rule.id in stmt_suppressions:
+                continue
             for finding in rule.check(inner, state, ctx):
                 findings.append(finding)
 
