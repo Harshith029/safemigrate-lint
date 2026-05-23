@@ -17,5 +17,6 @@ from . import rename_column_warning  # noqa: F401
 from . import rename_table_warning  # noqa: F401
 from . import drop_database_restricted  # noqa: F401
 from . import add_non_nullable_without_default  # noqa: F401
+from . import concurrent_index_drop_required  # noqa: F401
 
 __all__ = ["RULES", "Rule", "RuleContext", "register_rule"]

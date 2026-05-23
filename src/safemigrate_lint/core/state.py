@@ -21,6 +21,9 @@ class MigrationState:
     """Accumulated state from walking the migration's statements in order."""
 
     tables_created: set[str] = field(default_factory=set)
+    # Indexes created in this migration — bare names only (Postgres index names
+    # are unique within a schema and most rules compare bare).
+    indexes_created: set[str] = field(default_factory=set)
 
 
 def _table_name(relation: Any) -> str:
@@ -51,6 +54,9 @@ class StateBuilder:
                 name = _table_name(stmt.relation)
                 if name:
                     state.tables_created.add(name)
+            elif isinstance(stmt, ast.IndexStmt):
+                if stmt.idxname:
+                    state.indexes_created.add(stmt.idxname)
         return state
 
 
