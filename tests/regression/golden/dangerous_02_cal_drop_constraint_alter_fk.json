@@ -1,5 +1,75 @@
 [
   {
+    "rule_id": "constraint-dropped-warning",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 1,
+    "column": 0,
+    "message": "DROP CONSTRAINT DestinationCalendar_bookingId_fkey on DestinationCalendar removes a database-enforced invariant \u2014 application code that relies on it may break.",
+    "help": "ALTER TABLE DROP CONSTRAINT removes whatever the constraint enforced: a FOREIGN KEY (referential integrity), CHECK (predicate validity), PRIMARY KEY (row uniqueness + non-null), or UNIQUE constraint. Application code that assumes the invariant holds will silently accept data that previously would have been rejected. Atlas free-tier breaks this into CD101 (FK), CD102 (CHECK), and CD103 (PK) because Atlas performs schema diffing and knows the constraint type. We cannot tell from `ALTER TABLE ... DROP CONSTRAINT name` alone \u2014 same warning regardless. Suppress with `-- safemigrate:ignore=constraint-dropped-warning reason=\"...\"` after confirming the drop is intentional.",
+    "suggested_fix": null
+  },
+  {
+    "rule_id": "constraint-dropped-warning",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 2,
+    "column": 97,
+    "message": "DROP CONSTRAINT DestinationCalendar_eventTypeId_fkey on DestinationCalendar removes a database-enforced invariant \u2014 application code that relies on it may break.",
+    "help": "ALTER TABLE DROP CONSTRAINT removes whatever the constraint enforced: a FOREIGN KEY (referential integrity), CHECK (predicate validity), PRIMARY KEY (row uniqueness + non-null), or UNIQUE constraint. Application code that assumes the invariant holds will silently accept data that previously would have been rejected. Atlas free-tier breaks this into CD101 (FK), CD102 (CHECK), and CD103 (PK) because Atlas performs schema diffing and knows the constraint type. We cannot tell from `ALTER TABLE ... DROP CONSTRAINT name` alone \u2014 same warning regardless. Suppress with `-- safemigrate:ignore=constraint-dropped-warning reason=\"...\"` after confirming the drop is intentional.",
+    "suggested_fix": null
+  },
+  {
+    "rule_id": "constraint-dropped-warning",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 5,
+    "column": 89,
+    "message": "DROP CONSTRAINT DestinationCalendar_userId_fkey on DestinationCalendar removes a database-enforced invariant \u2014 application code that relies on it may break.",
+    "help": "ALTER TABLE DROP CONSTRAINT removes whatever the constraint enforced: a FOREIGN KEY (referential integrity), CHECK (predicate validity), PRIMARY KEY (row uniqueness + non-null), or UNIQUE constraint. Application code that assumes the invariant holds will silently accept data that previously would have been rejected. Atlas free-tier breaks this into CD101 (FK), CD102 (CHECK), and CD103 (PK) because Atlas performs schema diffing and knows the constraint type. We cannot tell from `ALTER TABLE ... DROP CONSTRAINT name` alone \u2014 same warning regardless. Suppress with `-- safemigrate:ignore=constraint-dropped-warning reason=\"...\"` after confirming the drop is intentional.",
+    "suggested_fix": null
+  },
+  {
+    "rule_id": "constraint-dropped-warning",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 8,
+    "column": 84,
+    "message": "DROP CONSTRAINT EventType_teamId_fkey on EventType removes a database-enforced invariant \u2014 application code that relies on it may break.",
+    "help": "ALTER TABLE DROP CONSTRAINT removes whatever the constraint enforced: a FOREIGN KEY (referential integrity), CHECK (predicate validity), PRIMARY KEY (row uniqueness + non-null), or UNIQUE constraint. Application code that assumes the invariant holds will silently accept data that previously would have been rejected. Atlas free-tier breaks this into CD101 (FK), CD102 (CHECK), and CD103 (PK) because Atlas performs schema diffing and knows the constraint type. We cannot tell from `ALTER TABLE ... DROP CONSTRAINT name` alone \u2014 same warning regardless. Suppress with `-- safemigrate:ignore=constraint-dropped-warning reason=\"...\"` after confirming the drop is intentional.",
+    "suggested_fix": null
+  },
+  {
+    "rule_id": "constraint-dropped-warning",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 11,
+    "column": 64,
+    "message": "DROP CONSTRAINT EventType_userId_fkey on EventType removes a database-enforced invariant \u2014 application code that relies on it may break.",
+    "help": "ALTER TABLE DROP CONSTRAINT removes whatever the constraint enforced: a FOREIGN KEY (referential integrity), CHECK (predicate validity), PRIMARY KEY (row uniqueness + non-null), or UNIQUE constraint. Application code that assumes the invariant holds will silently accept data that previously would have been rejected. Atlas free-tier breaks this into CD101 (FK), CD102 (CHECK), and CD103 (PK) because Atlas performs schema diffing and knows the constraint type. We cannot tell from `ALTER TABLE ... DROP CONSTRAINT name` alone \u2014 same warning regardless. Suppress with `-- safemigrate:ignore=constraint-dropped-warning reason=\"...\"` after confirming the drop is intentional.",
+    "suggested_fix": null
+  },
+  {
+    "rule_id": "constraint-dropped-warning",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 14,
+    "column": 64,
+    "message": "DROP CONSTRAINT EventTypeCustomInput_eventTypeId_fkey on EventTypeCustomInput removes a database-enforced invariant \u2014 application code that relies on it may break.",
+    "help": "ALTER TABLE DROP CONSTRAINT removes whatever the constraint enforced: a FOREIGN KEY (referential integrity), CHECK (predicate validity), PRIMARY KEY (row uniqueness + non-null), or UNIQUE constraint. Application code that assumes the invariant holds will silently accept data that previously would have been rejected. Atlas free-tier breaks this into CD101 (FK), CD102 (CHECK), and CD103 (PK) because Atlas performs schema diffing and knows the constraint type. We cannot tell from `ALTER TABLE ... DROP CONSTRAINT name` alone \u2014 same warning regardless. Suppress with `-- safemigrate:ignore=constraint-dropped-warning reason=\"...\"` after confirming the drop is intentional.",
+    "suggested_fix": null
+  },
+  {
+    "rule_id": "constraint-dropped-warning",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 17,
+    "column": 91,
+    "message": "DROP CONSTRAINT Membership_teamId_fkey on Membership removes a database-enforced invariant \u2014 application code that relies on it may break.",
+    "help": "ALTER TABLE DROP CONSTRAINT removes whatever the constraint enforced: a FOREIGN KEY (referential integrity), CHECK (predicate validity), PRIMARY KEY (row uniqueness + non-null), or UNIQUE constraint. Application code that assumes the invariant holds will silently accept data that previously would have been rejected. Atlas free-tier breaks this into CD101 (FK), CD102 (CHECK), and CD103 (PK) because Atlas performs schema diffing and knows the constraint type. We cannot tell from `ALTER TABLE ... DROP CONSTRAINT name` alone \u2014 same warning regardless. Suppress with `-- safemigrate:ignore=constraint-dropped-warning reason=\"...\"` after confirming the drop is intentional.",
+    "suggested_fix": null
+  },
+  {
     "rule_id": "constraint-not-valid-required",
     "severity": "warning",
     "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
