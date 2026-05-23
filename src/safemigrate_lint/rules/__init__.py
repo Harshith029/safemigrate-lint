@@ -10,6 +10,7 @@ from __future__ import annotations
 # Rule modules — imported for side effect (decorator registration).
 from . import (
     add_non_nullable_without_default,  # noqa: F401
+    column_type_change_rewrites_table,  # noqa: F401
     concurrent_index_create_required,  # noqa: F401
     concurrent_index_drop_required,  # noqa: F401
     drop_column_restricted,  # noqa: F401
