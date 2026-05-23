@@ -1,0 +1,103 @@
+"""constraint-not-valid-required — ADD CONSTRAINT without NOT VALID requires a full table scan.
+
+Fires WARNING on `ALTER TABLE … ADD CONSTRAINT … CHECK (…)` or
+`ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY …` when NOT VALID is missing.
+Postgres validates the constraint against existing rows; on a large pre-existing
+table this scan can take minutes while holding AccessExclusiveLock.
+
+Suppressed when the table was created in the same migration (empty → no
+validation cost). NOT VALID is the Postgres mechanism for adding the constraint
+immediately (catalog-only) and validating later with `VALIDATE CONSTRAINT`,
+which uses a weaker ShareUpdateExclusiveLock.
+
+UNIQUE constraints are intentionally excluded: Postgres doesn't allow NOT VALID
+on UNIQUE (a unique constraint is enforced by a backing index). See
+`unique-constraint-data-dependent` for that case.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterator
+from typing import Any
+
+from pglast import ast
+from pglast.enums import AlterTableType, ConstrType
+
+from ..core.finding import Finding, Severity
+from ..core.state import MigrationState, table_created_in_migration
+from ._registry import RuleContext, register_rule
+
+RULE_ID = "constraint-not-valid-required"
+
+
+@register_rule(
+    id=RULE_ID,
+    severity=Severity.WARNING,
+    applies_to=(ast.AlterTableStmt,),
+    doc=(
+        "ALTER TABLE ADD CONSTRAINT (CHECK or FOREIGN KEY) without NOT VALID requires "
+        "a full table scan to validate against existing rows, holding "
+        "AccessExclusiveLock for the duration. Use NOT VALID to add the constraint "
+        "instantly (catalog-only), then run VALIDATE CONSTRAINT in a separate "
+        "migration with the weaker ShareUpdateExclusiveLock."
+    ),
+)
+def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Finding]:
+    if not isinstance(stmt, ast.AlterTableStmt):
+        return
+
+    table = _table_name(stmt.relation)
+    if table and table_created_in_migration(state, table):
+        return  # empty table — no validation cost
+
+    line, column = ctx.line_col()
+
+    for cmd in stmt.cmds or ():
+        if not isinstance(cmd, ast.AlterTableCmd):
+            continue
+        if cmd.subtype != AlterTableType.AT_AddConstraint:
+            continue
+        constraint = cmd.def_
+        if not isinstance(constraint, ast.Constraint):
+            continue
+        if constraint.contype not in (ConstrType.CONSTR_CHECK, ConstrType.CONSTR_FOREIGN):
+            continue
+        if constraint.skip_validation:
+            continue  # NOT VALID is present — rule satisfied
+
+        kind_label = "CHECK" if constraint.contype == ConstrType.CONSTR_CHECK else "FOREIGN KEY"
+        constraint_name = constraint.conname or "<unnamed>"
+        yield Finding(
+            rule_id=RULE_ID,
+            severity=Severity.WARNING,
+            file=ctx.file,
+            line=line,
+            column=column,
+            message=(
+                f"ADD CONSTRAINT {constraint_name} {kind_label} on {table or 'table'} "
+                f"without NOT VALID requires a full table scan."
+            ),
+            help=(
+                f"Postgres validates the {kind_label} against every existing row, holding "
+                f"AccessExclusiveLock for the entire scan. On a large pre-existing table "
+                f"this blocks reads and writes for minutes. The two-step pattern is "
+                f"non-blocking: add the constraint with NOT VALID (catalog-only, "
+                f"~millisecond lock), then VALIDATE CONSTRAINT in a separate migration "
+                f"which uses ShareUpdateExclusiveLock (doesn't block reads or writes)."
+            ),
+            suggested_fix=(
+                f"-- Two-step pattern (non-blocking):\n"
+                f"ALTER TABLE {table} ADD CONSTRAINT {constraint_name} "
+                f"{kind_label} (...) NOT VALID;\n"
+                f"-- Then in a separate migration:\n"
+                f"ALTER TABLE {table} VALIDATE CONSTRAINT {constraint_name};"
+            ),
+        )
+
+
+def _table_name(relation: Any) -> str:
+    if relation is None:
+        return ""
+    schemaname = getattr(relation, "schemaname", None) or ""
+    relname = getattr(relation, "relname", None) or ""
+    return f"{schemaname}.{relname}" if schemaname else relname

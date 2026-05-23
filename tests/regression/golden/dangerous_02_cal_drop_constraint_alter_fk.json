@@ -1,1 +1,72 @@
-[]
+[
+  {
+    "rule_id": "constraint-not-valid-required",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 20,
+    "column": 66,
+    "message": "ADD CONSTRAINT EventType_userId_fkey FOREIGN KEY on EventType without NOT VALID requires a full table scan.",
+    "help": "Postgres validates the FOREIGN KEY against every existing row, holding AccessExclusiveLock for the entire scan. On a large pre-existing table this blocks reads and writes for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE EventType ADD CONSTRAINT EventType_userId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE EventType VALIDATE CONSTRAINT EventType_userId_fkey;"
+  },
+  {
+    "rule_id": "constraint-not-valid-required",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 23,
+    "column": 147,
+    "message": "ADD CONSTRAINT EventType_teamId_fkey FOREIGN KEY on EventType without NOT VALID requires a full table scan.",
+    "help": "Postgres validates the FOREIGN KEY against every existing row, holding AccessExclusiveLock for the entire scan. On a large pre-existing table this blocks reads and writes for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE EventType ADD CONSTRAINT EventType_teamId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE EventType VALIDATE CONSTRAINT EventType_teamId_fkey;"
+  },
+  {
+    "rule_id": "constraint-not-valid-required",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 26,
+    "column": 146,
+    "message": "ADD CONSTRAINT DestinationCalendar_eventTypeId_fkey FOREIGN KEY on DestinationCalendar without NOT VALID requires a full table scan.",
+    "help": "Postgres validates the FOREIGN KEY against every existing row, holding AccessExclusiveLock for the entire scan. On a large pre-existing table this blocks reads and writes for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE DestinationCalendar ADD CONSTRAINT DestinationCalendar_eventTypeId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE DestinationCalendar VALIDATE CONSTRAINT DestinationCalendar_eventTypeId_fkey;"
+  },
+  {
+    "rule_id": "constraint-not-valid-required",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 29,
+    "column": 181,
+    "message": "ADD CONSTRAINT DestinationCalendar_userId_fkey FOREIGN KEY on DestinationCalendar without NOT VALID requires a full table scan.",
+    "help": "Postgres validates the FOREIGN KEY against every existing row, holding AccessExclusiveLock for the entire scan. On a large pre-existing table this blocks reads and writes for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE DestinationCalendar ADD CONSTRAINT DestinationCalendar_userId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE DestinationCalendar VALIDATE CONSTRAINT DestinationCalendar_userId_fkey;"
+  },
+  {
+    "rule_id": "constraint-not-valid-required",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 32,
+    "column": 167,
+    "message": "ADD CONSTRAINT DestinationCalendar_bookingId_fkey FOREIGN KEY on DestinationCalendar without NOT VALID requires a full table scan.",
+    "help": "Postgres validates the FOREIGN KEY against every existing row, holding AccessExclusiveLock for the entire scan. On a large pre-existing table this blocks reads and writes for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE DestinationCalendar ADD CONSTRAINT DestinationCalendar_bookingId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE DestinationCalendar VALIDATE CONSTRAINT DestinationCalendar_bookingId_fkey;"
+  },
+  {
+    "rule_id": "constraint-not-valid-required",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 35,
+    "column": 175,
+    "message": "ADD CONSTRAINT Membership_teamId_fkey FOREIGN KEY on Membership without NOT VALID requires a full table scan.",
+    "help": "Postgres validates the FOREIGN KEY against every existing row, holding AccessExclusiveLock for the entire scan. On a large pre-existing table this blocks reads and writes for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE Membership ADD CONSTRAINT Membership_teamId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE Membership VALIDATE CONSTRAINT Membership_teamId_fkey;"
+  },
+  {
+    "rule_id": "constraint-not-valid-required",
+    "severity": "warning",
+    "file": "dangerous_02_cal_drop_constraint_alter_fk.sql",
+    "line": 38,
+    "column": 148,
+    "message": "ADD CONSTRAINT EventTypeCustomInput_eventTypeId_fkey FOREIGN KEY on EventTypeCustomInput without NOT VALID requires a full table scan.",
+    "help": "Postgres validates the FOREIGN KEY against every existing row, holding AccessExclusiveLock for the entire scan. On a large pre-existing table this blocks reads and writes for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE EventTypeCustomInput ADD CONSTRAINT EventTypeCustomInput_eventTypeId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE EventTypeCustomInput VALIDATE CONSTRAINT EventTypeCustomInput_eventTypeId_fkey;"
+  }
+]

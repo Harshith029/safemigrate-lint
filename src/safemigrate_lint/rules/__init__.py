@@ -13,6 +13,7 @@ from . import (
     column_type_change_rewrites_table,  # noqa: F401
     concurrent_index_create_required,  # noqa: F401
     concurrent_index_drop_required,  # noqa: F401
+    constraint_not_valid_required,  # noqa: F401
     drop_column_restricted,  # noqa: F401
     drop_database_restricted,  # noqa: F401
     drop_table_restricted,  # noqa: F401
