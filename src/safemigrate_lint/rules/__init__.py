@@ -7,16 +7,17 @@ import below.
 
 from __future__ import annotations
 
-from ._registry import RULES, Rule, RuleContext, register_rule
-
 # Rule modules — imported for side effect (decorator registration).
-from . import concurrent_index_create_required  # noqa: F401
-from . import drop_column_restricted  # noqa: F401
-from . import drop_table_restricted  # noqa: F401
-from . import rename_column_warning  # noqa: F401
-from . import rename_table_warning  # noqa: F401
-from . import drop_database_restricted  # noqa: F401
-from . import add_non_nullable_without_default  # noqa: F401
-from . import concurrent_index_drop_required  # noqa: F401
+from . import (
+    add_non_nullable_without_default,  # noqa: F401
+    concurrent_index_create_required,  # noqa: F401
+    concurrent_index_drop_required,  # noqa: F401
+    drop_column_restricted,  # noqa: F401
+    drop_database_restricted,  # noqa: F401
+    drop_table_restricted,  # noqa: F401
+    rename_column_warning,  # noqa: F401
+    rename_table_warning,  # noqa: F401
+)
+from ._registry import RULES, Rule, RuleContext, register_rule
 
 __all__ = ["RULES", "Rule", "RuleContext", "register_rule"]

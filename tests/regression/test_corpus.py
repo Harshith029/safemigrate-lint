@@ -13,14 +13,13 @@ from pathlib import Path
 
 import pytest
 
+# Force registration of every rule. Importing this module triggers each rule's
+# @register_rule decorator side-effect.
+import safemigrate_lint.rules  # noqa: F401
 from safemigrate_lint.core.engine import analyze
 from safemigrate_lint.core.finding import DEFAULT_LEVELS
 from safemigrate_lint.core.parser import parse_file
 from safemigrate_lint.core.state import StateBuilder
-
-# Force registration of every rule. Importing this module triggers each rule's
-# @register_rule decorator side-effect.
-import safemigrate_lint.rules  # noqa: F401
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES_DIR = REPO_ROOT / "fixtures" / "migrations"
