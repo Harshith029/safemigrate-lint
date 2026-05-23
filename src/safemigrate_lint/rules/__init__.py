@@ -18,6 +18,7 @@ from . import (
     nullable_to_non_nullable_may_fail,  # noqa: F401
     rename_column_warning,  # noqa: F401
     rename_table_warning,  # noqa: F401
+    unique_constraint_data_dependent,  # noqa: F401
 )
 from ._registry import RULES, Rule, RuleContext, register_rule
 
