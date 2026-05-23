@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from pglast import ast
+from pglast.enums import TransactionStmtKind
 
 
 @dataclass(slots=True)
@@ -24,6 +25,14 @@ class MigrationState:
     # Indexes created in this migration — bare names only (Postgres index names
     # are unique within a schema and most rules compare bare).
     indexes_created: set[str] = field(default_factory=set)
+    # True if any TransactionStmt with kind in {BEGIN, START} appears in this file.
+    # Used by index-concurrent-in-transaction-banned (CREATE INDEX CONCURRENTLY
+    # can't run inside an explicit transaction).
+    has_explicit_transaction_begin: bool = False
+    # Statement offsets (1-indexed byte offsets) where a BEGIN/START appears
+    # while a prior transaction is still open. Used by transaction-nesting-banned
+    # to fire only on the truly-nested BEGIN, not the outer one.
+    nested_begin_statement_offsets: set[int] = field(default_factory=set)
 
 
 def _table_name(relation: Any) -> str:
@@ -48,8 +57,12 @@ class StateBuilder:
     @staticmethod
     def build(statements: list[Any]) -> MigrationState:
         state = MigrationState()
+        tx_depth = 0
         for raw_stmt in statements:
             stmt = getattr(raw_stmt, "stmt", raw_stmt)
+            raw_offset = getattr(raw_stmt, "stmt_location", None) or 0
+            offset = raw_offset + 1
+
             if isinstance(stmt, ast.CreateStmt):
                 name = _table_name(stmt.relation)
                 if name:
@@ -57,6 +70,20 @@ class StateBuilder:
             elif isinstance(stmt, ast.IndexStmt):
                 if stmt.idxname:
                     state.indexes_created.add(stmt.idxname)
+            elif isinstance(stmt, ast.TransactionStmt):
+                if stmt.kind in (
+                    TransactionStmtKind.TRANS_STMT_BEGIN,
+                    TransactionStmtKind.TRANS_STMT_START,
+                ):
+                    state.has_explicit_transaction_begin = True
+                    if tx_depth > 0:
+                        state.nested_begin_statement_offsets.add(offset)
+                    tx_depth += 1
+                elif stmt.kind in (
+                    TransactionStmtKind.TRANS_STMT_COMMIT,
+                    TransactionStmtKind.TRANS_STMT_ROLLBACK,
+                ):
+                    tx_depth = max(0, tx_depth - 1)
         return state
 
 

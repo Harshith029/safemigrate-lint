@@ -17,6 +17,7 @@ from . import (
     drop_column_restricted,  # noqa: F401
     drop_database_restricted,  # noqa: F401
     drop_table_restricted,  # noqa: F401
+    index_concurrent_in_transaction_banned,  # noqa: F401
     nullable_to_non_nullable_may_fail,  # noqa: F401
     rename_column_warning,  # noqa: F401
     rename_table_warning,  # noqa: F401
