@@ -26,6 +26,7 @@ from . import (
     transaction_nesting_banned,  # noqa: F401
     unique_constraint_data_dependent,  # noqa: F401
     unique_constraint_exclusive_lock,  # noqa: F401
+    volatile_default_rewrites_table,  # noqa: F401
 )
 from ._registry import RULES, Rule, RuleContext, register_rule
 
