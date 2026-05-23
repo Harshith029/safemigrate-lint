@@ -11,5 +11,6 @@ from ._registry import RULES, Rule, RuleContext, register_rule
 
 # Rule modules — imported for side effect (decorator registration).
 from . import concurrent_index_create_required  # noqa: F401
+from . import drop_column_restricted  # noqa: F401
 
 __all__ = ["RULES", "Rule", "RuleContext", "register_rule"]

@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "rule_id": "drop-column-restricted",
+    "severity": "critical",
+    "file": "subtle_03_mattermost_update_with_join.sql",
+    "line": 1,
+    "column": 0,
+    "message": "DROP COLUMN IF EXISTS deleteat on threads is irreversible data loss.",
+    "help": "DROP COLUMN removes the column and all its data. There is no rollback path once the migration runs. If this column has production data, ensure you have a backup or are intentionally accepting the loss. To suppress, add `-- safemigrate:ignore=drop-column-restricted reason=\"...\"` on the line immediately preceding the ALTER TABLE statement.",
+    "suggested_fix": null
+  }
+]
