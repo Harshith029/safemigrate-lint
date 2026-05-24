@@ -12,6 +12,8 @@ from . import (
     access_method_change_rewrites,  # noqa: F401
     add_non_nullable_without_default,  # noqa: F401
     analyzer_blind_on_dynamic_sql,  # noqa: F401
+    bigint_over_int_preferred,  # noqa: F401
+    char_column_banned,  # noqa: F401
     column_type_change_rewrites_table,  # noqa: F401
     concurrent_index_create_required,  # noqa: F401
     concurrent_index_drop_required,  # noqa: F401
@@ -24,22 +26,26 @@ from . import (
     drop_table_restricted,  # noqa: F401
     enum_value_ordering_required,  # noqa: F401
     identity_column_add_rewrites,  # noqa: F401
+    identity_over_serial_preferred,  # noqa: F401
     index_concurrent_in_transaction_banned,  # noqa: F401
     index_no_duplicate_column,  # noqa: F401
     nullable_to_non_nullable_may_fail,  # noqa: F401
     pk_constraint_exclusive_lock,  # noqa: F401
+    prefer_robust_stmts,  # noqa: F401
     rename_column_warning,  # noqa: F401
     rename_table_warning,  # noqa: F401
     stored_generated_column_rewrites,  # noqa: F401
     table_logging_mode_rewrites,  # noqa: F401
+    text_over_varchar_preferred,  # noqa: F401
+    timeout_settings_required,  # noqa: F401
     timestamptz_over_timestamp_preferred,  # noqa: F401
-    truncate_cascade_banned,  # noqa: F401
     transaction_nesting_banned,  # noqa: F401
     trigger_add_blocks_writes,  # noqa: F401
+    truncate_cascade_banned,  # noqa: F401
     uncommitted_transaction_banned,  # noqa: F401
     unique_constraint_data_dependent,  # noqa: F401
-    update_delete_row_scope,  # noqa: F401
     unique_constraint_exclusive_lock,  # noqa: F401
+    update_delete_row_scope,  # noqa: F401
     volatile_default_rewrites_table,  # noqa: F401
 )
 from ._registry import RULES, Rule, RuleContext, register_rule
