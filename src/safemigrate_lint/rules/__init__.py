@@ -31,9 +31,11 @@ from . import (
     rename_table_warning,  # noqa: F401
     stored_generated_column_rewrites,  # noqa: F401
     table_logging_mode_rewrites,  # noqa: F401
+    timestamptz_over_timestamp_preferred,  # noqa: F401
     truncate_cascade_banned,  # noqa: F401
     transaction_nesting_banned,  # noqa: F401
     trigger_add_blocks_writes,  # noqa: F401
+    uncommitted_transaction_banned,  # noqa: F401
     unique_constraint_data_dependent,  # noqa: F401
     update_delete_row_scope,  # noqa: F401
     unique_constraint_exclusive_lock,  # noqa: F401

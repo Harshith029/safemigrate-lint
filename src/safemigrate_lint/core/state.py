@@ -33,6 +33,10 @@ class MigrationState:
     # while a prior transaction is still open. Used by transaction-nesting-banned
     # to fire only on the truly-nested BEGIN, not the outer one.
     nested_begin_statement_offsets: set[int] = field(default_factory=set)
+    # True if at the end of walking all statements, the transaction depth was
+    # still > 0 — i.e. a BEGIN/START was not matched by a COMMIT/ROLLBACK. Used
+    # by uncommitted-transaction-banned.
+    has_unmatched_begin: bool = False
 
 
 def _table_name(relation: Any) -> str:
@@ -84,6 +88,9 @@ class StateBuilder:
                     TransactionStmtKind.TRANS_STMT_ROLLBACK,
                 ):
                     tx_depth = max(0, tx_depth - 1)
+        # Final imbalance check: any unclosed transaction at end-of-file.
+        if tx_depth > 0:
+            state.has_unmatched_begin = True
         return state
 
 
