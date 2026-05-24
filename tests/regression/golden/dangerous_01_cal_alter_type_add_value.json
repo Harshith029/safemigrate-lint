@@ -3,7 +3,7 @@
     "rule_id": "enum-value-ordering-required",
     "severity": "warning",
     "file": "dangerous_01_cal_alter_type_add_value.sql",
-    "line": 1,
+    "line": 2,
     "column": 0,
     "message": "ALTER TYPE ADD VALUE 'SAML' without BEFORE/AFTER appends at the end of the enum's sort order \u2014 may surprise consumers that sort by enum order.",
     "help": "Postgres enum values have an implicit sort order matching their definition order. ALTER TYPE ADD VALUE without BEFORE/AFTER appends the new value at the end. If your application sorts by enum ordinal (common for status enums where order matches workflow progress), the new value will sort after everything else \u2014 which may not be what you want. Specify BEFORE or AFTER an existing value to make the intent explicit.",

@@ -24,11 +24,33 @@ class RuleContext:
     statement_offset: int  # 1-indexed byte offset of statement start in source SQL
 
     def line_col(self) -> tuple[int, int]:
-        """Compute 1-indexed (line, column) from statement_offset."""
+        """Compute 1-indexed (line, column) of the statement's KEYWORD.
+
+        pglast's `stmt_location` can point at leading whitespace or comments
+        owned by the statement, not at the keyword itself. We advance past
+        whitespace and `-- line comments` to find the actual keyword position.
+        Block comments (`/* ... */`) are uncommon in migrations and not handled.
+        """
         if self.statement_offset < 1:
             return (1, 0)
+        # Start at the 0-indexed offset.
         offset = min(self.statement_offset - 1, len(self.sql))
-        preceding = self.sql[:offset]
+        # Advance past whitespace / line comments.
+        sql = self.sql
+        n = len(sql)
+        while offset < n:
+            ch = sql[offset]
+            if ch in " \t\r\n":
+                offset += 1
+                continue
+            if ch == "-" and offset + 1 < n and sql[offset + 1] == "-":
+                # Line comment — skip to next newline.
+                nl = sql.find("\n", offset)
+                offset = n if nl == -1 else nl + 1
+                continue
+            break
+        # Compute line/col from offset.
+        preceding = sql[:offset]
         line = preceding.count("\n") + 1
         last_nl = preceding.rfind("\n")
         column = offset - last_nl - 1 if last_nl >= 0 else offset

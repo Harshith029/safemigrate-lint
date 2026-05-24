@@ -66,4 +66,4 @@ def _is_int(col: ast.ColumnDef) -> bool:
     if col.typeName is None:
         return False
     names = [getattr(n, "sval", "") for n in (col.typeName.names or ())]
-    return names and names[-1].lower() in _INT_TYPE_NAMES
+    return bool(names) and names[-1].lower() in _INT_TYPE_NAMES

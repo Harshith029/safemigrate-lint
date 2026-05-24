@@ -34,29 +34,26 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
     line, column = ctx.line_col()
 
     label = ""
-    needs_if_not_exists = False
-    needs_if_exists = False
+    clause = ""
 
     if isinstance(stmt, ast.CreateStmt):
         if not stmt.if_not_exists:
-            label, needs_if_not_exists = "CREATE TABLE", True
+            label, clause = "CREATE TABLE", "IF NOT EXISTS"
     elif isinstance(stmt, ast.IndexStmt):
         if not stmt.if_not_exists:
-            label, needs_if_not_exists = "CREATE INDEX", True
+            label, clause = "CREATE INDEX", "IF NOT EXISTS"
     elif isinstance(stmt, ast.CreateSchemaStmt):
         if not stmt.if_not_exists:
-            label, needs_if_not_exists = "CREATE SCHEMA", True
+            label, clause = "CREATE SCHEMA", "IF NOT EXISTS"
     elif isinstance(stmt, ast.DropStmt):
         if not getattr(stmt, "missing_ok", False):
             if stmt.removeType == ObjectType.OBJECT_TABLE:
-                label, needs_if_exists = "DROP TABLE", True
+                label, clause = "DROP TABLE", "IF EXISTS"
             elif stmt.removeType == ObjectType.OBJECT_INDEX:
-                label, needs_if_exists = "DROP INDEX", True
+                label, clause = "DROP INDEX", "IF EXISTS"
 
     if not label:
         return
-
-    clause = "IF NOT EXISTS" if needs_if_not_exists else "IF EXISTS"
     yield Finding(
         rule_id=RULE_ID,
         severity=Severity.STYLE,

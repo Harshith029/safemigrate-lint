@@ -61,4 +61,4 @@ def _is_serial(col: ast.ColumnDef) -> bool:
     if col.typeName is None:
         return False
     names = [getattr(n, "sval", "") for n in (col.typeName.names or ())]
-    return names and names[-1].lower() in _SERIAL_TYPE_NAMES
+    return bool(names) and names[-1].lower() in _SERIAL_TYPE_NAMES

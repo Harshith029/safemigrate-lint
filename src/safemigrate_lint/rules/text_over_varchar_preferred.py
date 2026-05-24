@@ -61,4 +61,4 @@ def _is_varchar(col: ast.ColumnDef) -> bool:
     if col.typeName is None:
         return False
     names = [getattr(n, "sval", "") for n in (col.typeName.names or ())]
-    return names and names[-1].lower() in {"varchar", "character varying"}
+    return bool(names) and names[-1].lower() in {"varchar", "character varying"}

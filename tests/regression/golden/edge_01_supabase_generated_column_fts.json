@@ -13,8 +13,8 @@
     "rule_id": "concurrent-index-create-required",
     "severity": "warning",
     "file": "edge_01_supabase_generated_column_fts.sql",
-    "line": 2,
-    "column": 92,
+    "line": 4,
+    "column": 0,
     "message": "CREATE INDEX fts_search_index without CONCURRENTLY blocks writes on page_section for the duration of the build.",
     "help": "Non-concurrent CREATE INDEX takes AccessExclusiveLock for the full build duration. On a populated table this blocks all writes (UPDATE/INSERT/DELETE) until the index is built \u2014 minutes on a large table. CREATE INDEX CONCURRENTLY uses a slower but non-blocking build path. It cannot run inside a transaction, so it must be its own migration statement.",
     "suggested_fix": "CREATE INDEX CONCURRENTLY fts_search_index ON page_section (...);"

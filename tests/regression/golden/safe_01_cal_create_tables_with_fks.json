@@ -3,8 +3,8 @@
     "rule_id": "timestamptz-over-timestamp-preferred",
     "severity": "warning",
     "file": "safe_01_cal_create_tables_with_fks.sql",
-    "line": 20,
-    "column": 2,
+    "line": 23,
+    "column": 0,
     "message": "Column Booking.startTime uses `timestamp` (without time zone). Use `timestamptz` instead to avoid silent DST and cross-region bugs.",
     "help": "Postgres `timestamp` (without time zone) stores the literal wall-clock value with no timezone info. On read it's interpreted in the session's timezone, which differs across regions, OS configurations, and DST transitions \u2014 values silently shift on the boundary. `timestamptz` stores as UTC internally and converts on read; same 8-byte storage. Convert with: ALTER TABLE <t> ALTER COLUMN <c> TYPE timestamptz USING <c> AT TIME ZONE 'UTC' (note: this rewrites the table \u2014 use the expand-contract pattern on large tables).",
     "suggested_fix": "-- Define new columns as timestamptz from the start:\nstartTime timestamptz NOT NULL DEFAULT now()"
@@ -13,8 +13,8 @@
     "rule_id": "timestamptz-over-timestamp-preferred",
     "severity": "warning",
     "file": "safe_01_cal_create_tables_with_fks.sql",
-    "line": 20,
-    "column": 2,
+    "line": 23,
+    "column": 0,
     "message": "Column Booking.endTime uses `timestamp` (without time zone). Use `timestamptz` instead to avoid silent DST and cross-region bugs.",
     "help": "Postgres `timestamp` (without time zone) stores the literal wall-clock value with no timezone info. On read it's interpreted in the session's timezone, which differs across regions, OS configurations, and DST transitions \u2014 values silently shift on the boundary. `timestamptz` stores as UTC internally and converts on read; same 8-byte storage. Convert with: ALTER TABLE <t> ALTER COLUMN <c> TYPE timestamptz USING <c> AT TIME ZONE 'UTC' (note: this rewrites the table \u2014 use the expand-contract pattern on large tables).",
     "suggested_fix": "-- Define new columns as timestamptz from the start:\nendTime timestamptz NOT NULL DEFAULT now()"
@@ -23,8 +23,8 @@
     "rule_id": "timestamptz-over-timestamp-preferred",
     "severity": "warning",
     "file": "safe_01_cal_create_tables_with_fks.sql",
-    "line": 20,
-    "column": 2,
+    "line": 23,
+    "column": 0,
     "message": "Column Booking.createdAt uses `timestamp` (without time zone). Use `timestamptz` instead to avoid silent DST and cross-region bugs.",
     "help": "Postgres `timestamp` (without time zone) stores the literal wall-clock value with no timezone info. On read it's interpreted in the session's timezone, which differs across regions, OS configurations, and DST transitions \u2014 values silently shift on the boundary. `timestamptz` stores as UTC internally and converts on read; same 8-byte storage. Convert with: ALTER TABLE <t> ALTER COLUMN <c> TYPE timestamptz USING <c> AT TIME ZONE 'UTC' (note: this rewrites the table \u2014 use the expand-contract pattern on large tables).",
     "suggested_fix": "-- Define new columns as timestamptz from the start:\ncreatedAt timestamptz NOT NULL DEFAULT now()"
@@ -33,8 +33,8 @@
     "rule_id": "timestamptz-over-timestamp-preferred",
     "severity": "warning",
     "file": "safe_01_cal_create_tables_with_fks.sql",
-    "line": 20,
-    "column": 2,
+    "line": 23,
+    "column": 0,
     "message": "Column Booking.updatedAt uses `timestamp` (without time zone). Use `timestamptz` instead to avoid silent DST and cross-region bugs.",
     "help": "Postgres `timestamp` (without time zone) stores the literal wall-clock value with no timezone info. On read it's interpreted in the session's timezone, which differs across regions, OS configurations, and DST transitions \u2014 values silently shift on the boundary. `timestamptz` stores as UTC internally and converts on read; same 8-byte storage. Convert with: ALTER TABLE <t> ALTER COLUMN <c> TYPE timestamptz USING <c> AT TIME ZONE 'UTC' (note: this rewrites the table \u2014 use the expand-contract pattern on large tables).",
     "suggested_fix": "-- Define new columns as timestamptz from the start:\nupdatedAt timestamptz NOT NULL DEFAULT now()"
