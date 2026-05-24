@@ -11,6 +11,7 @@ from __future__ import annotations
 from . import (
     access_method_change_rewrites,  # noqa: F401
     add_non_nullable_without_default,  # noqa: F401
+    analyzer_blind_on_dynamic_sql,  # noqa: F401
     column_type_change_rewrites_table,  # noqa: F401
     concurrent_index_create_required,  # noqa: F401
     concurrent_index_drop_required,  # noqa: F401
