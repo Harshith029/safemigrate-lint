@@ -8,5 +8,15 @@
     "message": "DROP COLUMN IF EXISTS deleteat on threads is irreversible data loss.",
     "help": "DROP COLUMN removes the column and all its data. There is no rollback path once the migration runs. If this column has production data, ensure you have a backup or are intentionally accepting the loss. To suppress, add `-- safemigrate:ignore=drop-column-restricted reason=\"...\"` on the line immediately preceding the ALTER TABLE statement.",
     "suggested_fix": null
+  },
+  {
+    "rule_id": "update-delete-row-scope",
+    "severity": "warning",
+    "file": "subtle_03_mattermost_update_with_join.sql",
+    "line": 4,
+    "column": 67,
+    "message": "UPDATE on threads \u2014 verify the WHERE clause is bounded; unbounded mass mutations cause replication lag and pool exhaustion.",
+    "help": "Static analysis cannot prove a WHERE clause bounds the row count. If the UPDATE can match more than ~10K rows, batch the operation: identify the target rows by primary key in chunks (ORDER BY pk LIMIT N), then loop. Mass UPDATEs on big tables block replication for minutes, can exhaust the connection pool by piling app writes behind row locks, and produce huge WAL volume which lags replicas. If you have verified the WHERE clause bounds the rows tightly (e.g. WHERE id = constant), suppress with `-- safemigrate:ignore=update-delete-row-scope reason=\"bounded by PK\"`.",
+    "suggested_fix": "-- Batched pattern for large UPDATEs:\nDO $$\nDECLARE batch_rows INT;\nBEGIN\n  LOOP\n    WITH chunk AS (\n      SELECT ctid FROM threads WHERE <condition> LIMIT 10000\n    )\n    UPDATE FROM threads WHERE ctid IN (SELECT ctid FROM chunk);\n    GET DIAGNOSTICS batch_rows = ROW_COUNT;\n    EXIT WHEN batch_rows = 0;\n  END LOOP;\nEND $$;"
   }
 ]

@@ -21,6 +21,7 @@ from . import (
     drop_table_restricted,  # noqa: F401
     identity_column_add_rewrites,  # noqa: F401
     index_concurrent_in_transaction_banned,  # noqa: F401
+    index_no_duplicate_column,  # noqa: F401
     nullable_to_non_nullable_may_fail,  # noqa: F401
     pk_constraint_exclusive_lock,  # noqa: F401
     rename_column_warning,  # noqa: F401
@@ -30,6 +31,7 @@ from . import (
     transaction_nesting_banned,  # noqa: F401
     trigger_add_blocks_writes,  # noqa: F401
     unique_constraint_data_dependent,  # noqa: F401
+    update_delete_row_scope,  # noqa: F401
     unique_constraint_exclusive_lock,  # noqa: F401
     volatile_default_rewrites_table,  # noqa: F401
 )
