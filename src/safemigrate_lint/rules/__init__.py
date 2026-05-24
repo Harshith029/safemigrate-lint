@@ -9,6 +9,7 @@ from __future__ import annotations
 
 # Rule modules — imported for side effect (decorator registration).
 from . import (
+    access_method_change_rewrites,  # noqa: F401
     add_non_nullable_without_default,  # noqa: F401
     column_type_change_rewrites_table,  # noqa: F401
     concurrent_index_create_required,  # noqa: F401
@@ -18,6 +19,7 @@ from . import (
     drop_column_restricted,  # noqa: F401
     drop_database_restricted,  # noqa: F401
     drop_table_restricted,  # noqa: F401
+    identity_column_add_rewrites,  # noqa: F401
     index_concurrent_in_transaction_banned,  # noqa: F401
     nullable_to_non_nullable_may_fail,  # noqa: F401
     pk_constraint_exclusive_lock,  # noqa: F401
