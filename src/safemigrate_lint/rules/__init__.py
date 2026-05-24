@@ -26,6 +26,7 @@ from . import (
     stored_generated_column_rewrites,  # noqa: F401
     table_logging_mode_rewrites,  # noqa: F401
     transaction_nesting_banned,  # noqa: F401
+    trigger_add_blocks_writes,  # noqa: F401
     unique_constraint_data_dependent,  # noqa: F401
     unique_constraint_exclusive_lock,  # noqa: F401
     volatile_default_rewrites_table,  # noqa: F401
