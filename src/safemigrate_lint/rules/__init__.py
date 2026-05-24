@@ -14,11 +14,14 @@ from . import (
     column_type_change_rewrites_table,  # noqa: F401
     concurrent_index_create_required,  # noqa: F401
     concurrent_index_drop_required,  # noqa: F401
+    concurrent_partition_detach_required,  # noqa: F401
+    concurrent_reindex_required,  # noqa: F401
     constraint_dropped_warning,  # noqa: F401
     constraint_not_valid_required,  # noqa: F401
     drop_column_restricted,  # noqa: F401
     drop_database_restricted,  # noqa: F401
     drop_table_restricted,  # noqa: F401
+    enum_value_ordering_required,  # noqa: F401
     identity_column_add_rewrites,  # noqa: F401
     index_concurrent_in_transaction_banned,  # noqa: F401
     index_no_duplicate_column,  # noqa: F401
@@ -28,6 +31,7 @@ from . import (
     rename_table_warning,  # noqa: F401
     stored_generated_column_rewrites,  # noqa: F401
     table_logging_mode_rewrites,  # noqa: F401
+    truncate_cascade_banned,  # noqa: F401
     transaction_nesting_banned,  # noqa: F401
     trigger_add_blocks_writes,  # noqa: F401
     unique_constraint_data_dependent,  # noqa: F401
