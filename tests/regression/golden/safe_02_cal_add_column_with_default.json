@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "rule_id": "timestamptz-over-timestamp-preferred",
+    "severity": "warning",
+    "file": "safe_02_cal_add_column_with_default.sql",
+    "line": 1,
+    "column": 0,
+    "message": "Column users.emailVerified uses `timestamp` (without time zone). Use `timestamptz` instead to avoid silent DST and cross-region bugs.",
+    "help": "Postgres `timestamp` (without time zone) stores the literal wall-clock value with no timezone info. On read it's interpreted in the session's timezone, which differs across regions, OS configurations, and DST transitions \u2014 values silently shift on the boundary. `timestamptz` stores as UTC internally and converts on read; same 8-byte storage. Convert with: ALTER TABLE <t> ALTER COLUMN <c> TYPE timestamptz USING <c> AT TIME ZONE 'UTC' (note: this rewrites the table \u2014 use the expand-contract pattern on large tables).",
+    "suggested_fix": "-- Define new columns as timestamptz from the start:\nemailVerified timestamptz NOT NULL DEFAULT now()"
+  },
+  {
+    "rule_id": "timestamptz-over-timestamp-preferred",
+    "severity": "warning",
+    "file": "safe_02_cal_add_column_with_default.sql",
+    "line": 2,
+    "column": 64,
+    "message": "Column VerificationRequest.expires uses `timestamp` (without time zone). Use `timestamptz` instead to avoid silent DST and cross-region bugs.",
+    "help": "Postgres `timestamp` (without time zone) stores the literal wall-clock value with no timezone info. On read it's interpreted in the session's timezone, which differs across regions, OS configurations, and DST transitions \u2014 values silently shift on the boundary. `timestamptz` stores as UTC internally and converts on read; same 8-byte storage. Convert with: ALTER TABLE <t> ALTER COLUMN <c> TYPE timestamptz USING <c> AT TIME ZONE 'UTC' (note: this rewrites the table \u2014 use the expand-contract pattern on large tables).",
+    "suggested_fix": "-- Define new columns as timestamptz from the start:\nexpires timestamptz NOT NULL DEFAULT now()"
+  },
+  {
+    "rule_id": "timestamptz-over-timestamp-preferred",
+    "severity": "warning",
+    "file": "safe_02_cal_add_column_with_default.sql",
+    "line": 2,
+    "column": 64,
+    "message": "Column VerificationRequest.createdAt uses `timestamp` (without time zone). Use `timestamptz` instead to avoid silent DST and cross-region bugs.",
+    "help": "Postgres `timestamp` (without time zone) stores the literal wall-clock value with no timezone info. On read it's interpreted in the session's timezone, which differs across regions, OS configurations, and DST transitions \u2014 values silently shift on the boundary. `timestamptz` stores as UTC internally and converts on read; same 8-byte storage. Convert with: ALTER TABLE <t> ALTER COLUMN <c> TYPE timestamptz USING <c> AT TIME ZONE 'UTC' (note: this rewrites the table \u2014 use the expand-contract pattern on large tables).",
+    "suggested_fix": "-- Define new columns as timestamptz from the start:\ncreatedAt timestamptz NOT NULL DEFAULT now()"
+  },
+  {
+    "rule_id": "timestamptz-over-timestamp-preferred",
+    "severity": "warning",
+    "file": "safe_02_cal_add_column_with_default.sql",
+    "line": 2,
+    "column": 64,
+    "message": "Column VerificationRequest.updatedAt uses `timestamp` (without time zone). Use `timestamptz` instead to avoid silent DST and cross-region bugs.",
+    "help": "Postgres `timestamp` (without time zone) stores the literal wall-clock value with no timezone info. On read it's interpreted in the session's timezone, which differs across regions, OS configurations, and DST transitions \u2014 values silently shift on the boundary. `timestamptz` stores as UTC internally and converts on read; same 8-byte storage. Convert with: ALTER TABLE <t> ALTER COLUMN <c> TYPE timestamptz USING <c> AT TIME ZONE 'UTC' (note: this rewrites the table \u2014 use the expand-contract pattern on large tables).",
+    "suggested_fix": "-- Define new columns as timestamptz from the start:\nupdatedAt timestamptz NOT NULL DEFAULT now()"
+  }
+]
