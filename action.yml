@@ -1,0 +1,30 @@
+name: 'safemigrate-lint'
+description: 'Lint Postgres migration SQL on every PR. Catches the dangerous operations before they hit production.'
+author: 'harshith'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  paths:
+    description: 'Glob or newline-separated list of SQL files to lint (e.g. "migrations/*.sql").'
+    required: true
+  severity:
+    description: 'Comma-separated severity levels to include: critical,warning,style.'
+    required: false
+    default: 'critical,warning'
+  format:
+    description: 'Output format for the action log: json or markdown.'
+    required: false
+    default: 'json'
+
+outputs:
+  findings-count:
+    description: 'Total number of findings emitted (after severity filter).'
+  has-critical:
+    description: 'True if at least one critical-severity finding was emitted.'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
