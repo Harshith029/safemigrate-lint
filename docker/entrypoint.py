@@ -52,7 +52,10 @@ def _expand_paths(paths_input: str) -> list[str]:
     return matched
 
 
-def _write_outputs(count: int, has_critical: bool) -> None:
+def _write_outputs(count: int, has_critical: bool) -> bool:
+    """Append findings-count and has-critical to $GITHUB_OUTPUT.
+    Returns False on I/O failure so the caller can surface an actionable
+    error and abort cleanly instead of emitting a bare stack trace."""
     output_file = os.environ.get("GITHUB_OUTPUT")
     if not output_file:
         print(
@@ -60,10 +63,20 @@ def _write_outputs(count: int, has_critical: bool) -> None:
             f"has-critical={'true' if has_critical else 'false'}",
             file=sys.stderr,
         )
-        return
-    with open(output_file, "a", encoding="utf-8") as f:
-        f.write(f"findings-count={count}\n")
-        f.write(f"has-critical={'true' if has_critical else 'false'}\n")
+        return True
+    try:
+        with open(output_file, "a", encoding="utf-8") as f:
+            f.write(f"findings-count={count}\n")
+            f.write(f"has-critical={'true' if has_critical else 'false'}\n")
+    except OSError as e:
+        _err(
+            f"could not write to $GITHUB_OUTPUT ({output_file}): {e}. "
+            "The runner is expected to provide this file with write access; "
+            "if you see this outside CI, set GITHUB_OUTPUT to a writable path "
+            "or unset it to log outputs to stderr."
+        )
+        return False
+    return True
 
 
 def _run_cli(
@@ -121,7 +134,8 @@ def main() -> int:
 
     count = len(findings)
     has_critical = any(f.get("severity") == "critical" for f in findings)
-    _write_outputs(count, has_critical)
+    if not _write_outputs(count, has_critical):
+        return 2
 
     if fmt == "json":
         sys.stdout.write(json_run.stdout)
