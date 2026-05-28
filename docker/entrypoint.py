@@ -30,6 +30,10 @@ CLI_NAME = "safemigrate-lint"
 # rendered view; detectable via the issues-comments API.
 COMMENT_MARKER = "<!-- safemigrate-lint:comment-id -->"
 
+# Check Run name shown in the PR's checks list. Tied to head_sha per run, so
+# each push gets a fresh check (no find-or-create needed).
+CHECK_RUN_NAME = "safemigrate-lint"
+
 
 def _err(msg: str) -> None:
     print(f"{CLI_NAME}: {msg}", file=sys.stderr)
@@ -168,8 +172,21 @@ def _pr_context() -> dict | None:
         _err("pull_request.number not found in event payload; skipping comment.")
         return None
 
+    # head.sha is optional in this context — comment posting doesn't need it;
+    # only Check Run creation does. The Check Run path surfaces its own error
+    # when this is missing so the comment can still go through.
+    head_sha = pr.get("head", {}).get("sha")
+    if not isinstance(head_sha, str) or not head_sha:
+        head_sha = None
+
     owner, name = repo.split("/", 1)
-    return {"token": token, "owner": owner, "repo": name, "pr_number": pr_number}
+    return {
+        "token": token,
+        "owner": owner,
+        "repo": name,
+        "pr_number": pr_number,
+        "head_sha": head_sha,
+    }
 
 
 def _find_existing_comment(ctx: dict) -> int | None:
@@ -234,6 +251,87 @@ def _post_or_edit_comment(ctx: dict, body_md: str) -> None:
         _err(
             f"GitHub API returned {status} posting comment on PR "
             f"#{ctx['pr_number']}: {raw[:200]}"
+        )
+
+
+def _check_run_conclusion(count: int, has_critical: bool) -> str:
+    """Map lint severity to a GitHub Check Run conclusion.
+
+      0 findings           -> success
+      any critical         -> action_required  (semantic "please look at this")
+      warnings/style only  -> neutral          (surfaced but non-blocking)
+    """
+    if count == 0:
+        return "success"
+    if has_critical:
+        return "action_required"
+    return "neutral"
+
+
+def _check_run_output(count: int, findings: list[dict]) -> dict:
+    """Build the Check Run's {title, summary} object — concise, since the PR
+    comment carries the per-finding detail."""
+    if count == 0:
+        return {
+            "title": "No findings",
+            "summary": "No migration safety findings. :white_check_mark:",
+        }
+    by_sev = {"critical": 0, "warning": 0, "style": 0}
+    for f in findings:
+        sev = f.get("severity")
+        if sev in by_sev:
+            by_sev[sev] += 1
+    parts = [f"{n} {s}" for s, n in by_sev.items() if n]
+    breakdown = ", ".join(parts) or f"{count} findings"
+    return {
+        "title": f"{count} findings — {breakdown}",
+        "summary": (
+            f"**{count} migration safety findings** — {breakdown}.\n\n"
+            "See the PR conversation for per-finding detail."
+        ),
+    }
+
+
+def _create_check_run(
+    ctx: dict, count: int, has_critical: bool, findings: list[dict]
+) -> None:
+    """POST a Check Run for the PR head commit. Logs to stderr; API failures
+    do not change the action's exit code. 403 gets a specific actionable
+    message since missing `checks: write` permission is the common cause."""
+    head_sha = ctx.get("head_sha")
+    if not head_sha:
+        _err(
+            "pull_request.head.sha not found in event payload; "
+            "skipping Check Run creation."
+        )
+        return
+
+    body = {
+        "name": CHECK_RUN_NAME,
+        "head_sha": head_sha,
+        "status": "completed",
+        "conclusion": _check_run_conclusion(count, has_critical),
+        "output": _check_run_output(count, findings),
+    }
+    url = f"https://api.github.com/repos/{ctx['owner']}/{ctx['repo']}/check-runs"
+    status, parsed, raw = _api_request("POST", url, ctx["token"], body)
+    if status in (200, 201):
+        cr_id = parsed.get("id") if isinstance(parsed, dict) else "?"
+        print(
+            f"[check-run] created #{cr_id} (conclusion={body['conclusion']})",
+            file=sys.stderr,
+        )
+    elif status == 403:
+        _err(
+            "GitHub API returned 403 creating Check Run — the workflow job "
+            "needs `permissions: { checks: write }` (in addition to "
+            "`pull-requests: write` for the comment). "
+            f"Response: {raw[:200]}"
+        )
+    else:
+        _err(
+            f"GitHub API returned {status} creating Check Run for "
+            f"{head_sha[:7]}: {raw[:200]}"
         )
 
 
@@ -305,8 +403,10 @@ def main() -> int:
     else:
         sys.stdout.write(md_body or "")
 
-    if ctx is not None and md_body is not None:
-        _post_or_edit_comment(ctx, md_body)
+    if ctx is not None:
+        if md_body is not None:
+            _post_or_edit_comment(ctx, md_body)
+        _create_check_run(ctx, count, has_critical, findings)
 
     return json_run.returncode
 
