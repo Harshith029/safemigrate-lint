@@ -1,11 +1,11 @@
 [project]
 name = "safemigrate-lint"
-version = "0.1.0"
+version = "1.0.0"
 description = "Open-source GitHub Action for Postgres migration linting"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "harshith" }]
+authors = [{ name = "Pali Krishna Harshith" }]
 dependencies = [
     "pglast>=6.0",
 ]
