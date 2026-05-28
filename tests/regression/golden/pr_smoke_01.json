@@ -1,0 +1,12 @@
+[
+  {
+    "rule_id": "drop-table-restricted",
+    "severity": "critical",
+    "file": "pr_smoke_01.sql",
+    "line": 1,
+    "column": 0,
+    "message": "DROP TABLE legacy_orders is irreversible data loss for the entire relation.",
+    "help": "DROP TABLE removes the table, all its rows, all dependent indexes, and any rows in tables that reference it via CASCADE. There is no rollback path once the migration runs. If this table has production data, ensure it has been archived. To suppress, add `-- safemigrate:ignore=drop-table-restricted reason=\"...\"` on the line immediately preceding the DROP TABLE statement.",
+    "suggested_fix": null
+  }
+]
