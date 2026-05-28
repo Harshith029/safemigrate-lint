@@ -26,10 +26,10 @@ jobs:
         run: uv sync --frozen
 
       - name: Lint with ruff
-        run: uv run ruff check src/ tests/
+        run: uv run ruff check src/ tests/ docker/
 
       - name: Type-check with mypy
-        run: uv run mypy src/
+        run: uv run mypy src/ docker/
 
       - name: Run tests
         run: uv run pytest -v
