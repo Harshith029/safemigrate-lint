@@ -8,5 +8,15 @@
     "message": "DROP TABLE legacy_orders is irreversible data loss for the entire relation.",
     "help": "DROP TABLE removes the table, all its rows, all dependent indexes, and any rows in tables that reference it via CASCADE. There is no rollback path once the migration runs. If this table has production data, ensure it has been archived. To suppress, add `-- safemigrate:ignore=drop-table-restricted reason=\"...\"` on the line immediately preceding the DROP TABLE statement.",
     "suggested_fix": null
+  },
+  {
+    "rule_id": "concurrent-index-create-required",
+    "severity": "warning",
+    "file": "pr_smoke_01.sql",
+    "line": 2,
+    "column": 0,
+    "message": "CREATE INDEX idx_users_email without CONCURRENTLY blocks writes on users for the duration of the build.",
+    "help": "Non-concurrent CREATE INDEX takes AccessExclusiveLock for the full build duration. On a populated table this blocks all writes (UPDATE/INSERT/DELETE) until the index is built \u2014 minutes on a large table. CREATE INDEX CONCURRENTLY uses a slower but non-blocking build path. It cannot run inside a transaction, so it must be its own migration statement.",
+    "suggested_fix": "CREATE INDEX CONCURRENTLY idx_users_email ON users (...);"
   }
 ]
