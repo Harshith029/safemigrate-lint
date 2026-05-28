@@ -1,0 +1,26 @@
+name: Lint migrations
+
+on:
+  pull_request:
+    paths:
+      - 'fixtures/migrations/**/*.sql'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint migration SQL
+        uses: ./
+        with:
+          paths: 'fixtures/migrations/**/*.sql'
+          severity: 'critical,warning'
+          format: 'markdown'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
