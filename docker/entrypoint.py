@@ -20,8 +20,15 @@ import os
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 
 CLI_NAME = "safemigrate-lint"
+
+# First-line HTML marker that identifies this action's PR comment so re-runs
+# edit the existing comment instead of posting a duplicate. Invisible in the
+# rendered view; detectable via the issues-comments API.
+COMMENT_MARKER = "<!-- safemigrate-lint:comment-id -->"
 
 
 def _err(msg: str) -> None:
@@ -86,6 +93,150 @@ def _run_cli(
     return subprocess.run(argv, capture_output=True, text=True, check=False)
 
 
+def _api_request(
+    method: str, url: str, token: str, body: dict | None = None
+) -> tuple[int, object, str]:
+    """Make a GitHub REST API request via stdlib urllib (no new deps).
+    Returns (status, parsed_body_or_None, raw_text). On a transport-level
+    failure (DNS, connection refused, timeout) returns (0, None, message)
+    rather than raising."""
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "safemigrate-lint-action",
+    }
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode("utf-8")
+            parsed = json.loads(raw) if raw else None
+            return resp.status, parsed, raw
+    except urllib.error.HTTPError as e:
+        raw = ""
+        try:
+            raw = e.read().decode("utf-8", errors="replace")
+        except OSError:
+            pass
+        return e.code, None, raw
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        return 0, None, f"network error: {e}"
+
+
+def _pr_context() -> dict | None:
+    """Detect whether this run is in a pull_request event with enough context
+    to post a comment. Returns {token, owner, repo, pr_number} or None.
+    Emits actionable stderr messages when the event is a PR but a piece is
+    missing — silent skip would hide misconfiguration."""
+    event_name = os.environ.get("GITHUB_EVENT_NAME", "").strip()
+    if event_name != "pull_request":
+        return None
+
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    event_path = os.environ.get("GITHUB_EVENT_PATH", "").strip()
+
+    if not token:
+        _err(
+            "GITHUB_TOKEN is not set; cannot post PR comment. Add "
+            "`permissions: { pull-requests: write }` to the workflow job so "
+            "GitHub Actions injects the token, then pass it via "
+            "`env: { GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} }`."
+        )
+        return None
+    if not repo or "/" not in repo:
+        _err("GITHUB_REPOSITORY is missing or malformed; cannot post PR comment.")
+        return None
+    if not event_path or not os.path.exists(event_path):
+        _err("GITHUB_EVENT_PATH is missing; cannot determine PR number.")
+        return None
+
+    try:
+        with open(event_path, encoding="utf-8") as f:
+            event = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        _err(f"could not read GitHub event payload at {event_path}: {e}.")
+        return None
+
+    pr = event.get("pull_request") or {}
+    pr_number = pr.get("number")
+    if not isinstance(pr_number, int):
+        _err("pull_request.number not found in event payload; skipping comment.")
+        return None
+
+    owner, name = repo.split("/", 1)
+    return {"token": token, "owner": owner, "repo": name, "pr_number": pr_number}
+
+
+def _find_existing_comment(ctx: dict) -> int | None:
+    """Walk pages of the PR's comments looking for one whose body begins with
+    COMMENT_MARKER. Returns the comment id, or None if not found / on error."""
+    page = 1
+    while True:
+        url = (
+            f"https://api.github.com/repos/{ctx['owner']}/{ctx['repo']}"
+            f"/issues/{ctx['pr_number']}/comments?per_page=100&page={page}"
+        )
+        status, comments, raw = _api_request("GET", url, ctx["token"])
+        if status != 200 or not isinstance(comments, list):
+            _err(
+                f"GitHub API returned {status} listing comments on PR "
+                f"#{ctx['pr_number']}: {raw[:200]}"
+            )
+            return None
+        for c in comments:
+            body = c.get("body", "") or ""
+            if body.startswith(COMMENT_MARKER):
+                return int(c["id"])
+        if len(comments) < 100:
+            return None
+        page += 1
+
+
+def _post_or_edit_comment(ctx: dict, body_md: str) -> None:
+    """Find-or-create the marker-tagged comment on the PR. API failures are
+    logged to stderr but do not change the action's exit code — the lint
+    result stays the actionable signal even if commenting fails."""
+    body_with_marker = f"{COMMENT_MARKER}\n{body_md}"
+    existing = _find_existing_comment(ctx)
+    if existing is not None:
+        url = (
+            f"https://api.github.com/repos/{ctx['owner']}/{ctx['repo']}"
+            f"/issues/comments/{existing}"
+        )
+        status, _, raw = _api_request(
+            "PATCH", url, ctx["token"], {"body": body_with_marker}
+        )
+        if status in (200, 201):
+            print(f"[comment] edited existing comment #{existing}", file=sys.stderr)
+        else:
+            _err(
+                f"GitHub API returned {status} editing comment "
+                f"#{existing}: {raw[:200]}"
+            )
+        return
+
+    url = (
+        f"https://api.github.com/repos/{ctx['owner']}/{ctx['repo']}"
+        f"/issues/{ctx['pr_number']}/comments"
+    )
+    status, parsed, raw = _api_request(
+        "POST", url, ctx["token"], {"body": body_with_marker}
+    )
+    if status in (200, 201):
+        new_id = parsed.get("id") if isinstance(parsed, dict) else "?"
+        print(f"[comment] posted new comment #{new_id}", file=sys.stderr)
+    else:
+        _err(
+            f"GitHub API returned {status} posting comment on PR "
+            f"#{ctx['pr_number']}: {raw[:200]}"
+        )
+
+
 def main() -> int:
     if not shutil.which(CLI_NAME):
         _err(
@@ -137,13 +288,25 @@ def main() -> int:
     if not _write_outputs(count, has_critical):
         return 2
 
+    # Detect whether this run can post a PR comment.
+    ctx = _pr_context()
+
+    # Render markdown once if we need it — either for the action log display
+    # or for the PR comment body. Avoids a third CLI invocation.
+    md_body: str | None = None
+    if fmt == "markdown" or ctx is not None:
+        md_run = _run_cli(files, severity, "markdown")
+        md_body = md_run.stdout
+        if md_run.stderr:
+            sys.stderr.write(md_run.stderr)
+
     if fmt == "json":
         sys.stdout.write(json_run.stdout)
     else:
-        md_run = _run_cli(files, severity, "markdown")
-        sys.stdout.write(md_run.stdout)
-        if md_run.stderr:
-            sys.stderr.write(md_run.stderr)
+        sys.stdout.write(md_body or "")
+
+    if ctx is not None and md_body is not None:
+        _post_or_edit_comment(ctx, md_body)
 
     return json_run.returncode
 
