@@ -3,7 +3,7 @@ name: Lint migrations
 on:
   pull_request:
     paths:
-      - 'fixtures/migrations/**/*.sql'
+      - 'fixtures/smoke/**/*.sql'
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ jobs:
       - name: Lint migration SQL
         uses: ./
         with:
-          paths: 'fixtures/migrations/**/*.sql'
+          paths: 'fixtures/smoke/**/*.sql'
           severity: 'critical,warning'
           format: 'markdown'
         env:
