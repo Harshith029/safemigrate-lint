@@ -36,5 +36,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Tool dirs
+.claude/
+.qodo/
+
 # Project-specific
 fixtures/squawk_stderr.log
