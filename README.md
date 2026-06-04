@@ -1,6 +1,7 @@
 # safemigrate-lint
 
 [![CI](https://github.com/Harshith029/safemigrate-lint/actions/workflows/ci.yml/badge.svg)](https://github.com/Harshith029/safemigrate-lint/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/safemigrate-lint.svg)](https://pypi.org/project/safemigrate-lint/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 A GitHub Action that lints Postgres migration SQL on every PR. Catches the operations that actually break production — written for the real shape of production migrations, not the textbook one.
@@ -9,6 +10,39 @@ A GitHub Action that lints Postgres migration SQL on every PR. Catches the opera
 - Real Postgres parser via [pglast](https://github.com/lelit/pglast) (libpg_query) — handles extension SQL (TimescaleDB, PostGIS) that other linters trip on
 - Cross-statement context — suppresses FK-to-new-table and similar false positives that pile up in single-statement linters
 - Posts a find-or-create PR comment with per-finding detail; creates a Check Run with severity-mapped conclusion
+
+## Demo
+
+On every pull request, safemigrate-lint posts a comment that groups findings by severity — each with the lock it takes and the safe rewrite — and sets a Check Run conclusion you can require in branch protection.
+
+<!-- Drop the screenshot in once captured (see marketing/sample-output.md or open a PR
+     touching a dangerous migration so the self-test workflow posts a real comment):
+     ![safemigrate-lint comment on a pull request](docs/demo.png) -->
+
+<details>
+<summary><b>Example PR comment</b> (click to expand)</summary>
+
+```text
+## 🛡️ SafeMigrate Lint
+
+**2 findings** — 1 critical, 1 warning.
+
+### 🔴 CRITICAL — drop-column-restricted
+migrations/0042_cleanup.sql:2
+DROP COLUMN deleteat on threads is irreversible data loss.
+
+### 🟡 WARNING — constraint-not-valid-required
+migrations/0042_cleanup.sql:8
+ADD CONSTRAINT orders_user_fk FOREIGN KEY without NOT VALID requires a full
+table scan, holding AccessExclusiveLock for the duration.
+
+Suggested fix:
+  ALTER TABLE orders ADD CONSTRAINT orders_user_fk FOREIGN KEY (...) NOT VALID;
+  -- then, in a separate migration:
+  ALTER TABLE orders VALIDATE CONSTRAINT orders_user_fk;
+```
+
+</details>
 
 ## Why
 
