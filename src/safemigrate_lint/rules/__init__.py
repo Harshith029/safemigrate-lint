@@ -32,6 +32,7 @@ from . import (
     nullable_to_non_nullable_may_fail,  # noqa: F401
     pk_constraint_exclusive_lock,  # noqa: F401
     prefer_robust_stmts,  # noqa: F401
+    refresh_matview_blocks_reads,  # noqa: F401
     rename_column_warning,  # noqa: F401
     rename_table_warning,  # noqa: F401
     stored_generated_column_rewrites,  # noqa: F401

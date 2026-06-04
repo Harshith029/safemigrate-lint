@@ -3,6 +3,15 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `refresh-matview-blocks-reads` (WARNING) — flags `REFRESH MATERIALIZED VIEW` without `CONCURRENTLY`, which takes AccessExclusiveLock and blocks all reads of the view until the refresh completes. Suppressed when the matview was created earlier in the same migration.
+- `StateBuilder` now records `CREATE TABLE AS` / `CREATE MATERIALIZED VIEW` (`CreateTableAsStmt`) objects in `tables_created`, enabling cross-statement suppression for matview rules.
+- Distribution: `.pre-commit-hooks.yaml` (use as a pre-commit hook) and PyPI metadata (keywords, classifiers, project URLs).
+- Docs: `CONTRIBUTING.md` and `docs/writing-a-rule.md` (rule-authoring walkthrough).
+
 ## [1.0.0] — 2026-05-28
 
 Initial public release.

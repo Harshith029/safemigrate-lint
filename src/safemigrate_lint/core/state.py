@@ -71,6 +71,14 @@ class StateBuilder:
                 name = _table_name(stmt.relation)
                 if name:
                     state.tables_created.add(name)
+            elif isinstance(stmt, ast.CreateTableAsStmt):
+                # CREATE TABLE AS / CREATE MATERIALIZED VIEW — name lives on the
+                # IntoClause, not `relation`. Tracked alongside tables so rules
+                # keyed on `table_created_in_migration` (e.g. refresh-matview-blocks-reads)
+                # suppress on objects created earlier in the same migration.
+                rel = stmt.into.rel if stmt.into else None
+                if rel and rel.relname:
+                    state.tables_created.add(_table_name(rel))
             elif isinstance(stmt, ast.IndexStmt):
                 if stmt.idxname:
                     state.indexes_created.add(stmt.idxname)

@@ -5,7 +5,7 @@
 
 A GitHub Action that lints Postgres migration SQL on every PR. Catches the operations that actually break production — written for the real shape of production migrations, not the textbook one.
 
-- 32 safety rules + 6 opt-in style rules across CRITICAL / WARNING / STYLE tiers
+- 33 safety rules + 6 opt-in style rules across CRITICAL / WARNING / STYLE tiers
 - Real Postgres parser via [pglast](https://github.com/lelit/pglast) (libpg_query) — handles extension SQL (TimescaleDB, PostGIS) that other linters trip on
 - Cross-statement context — suppresses FK-to-new-table and similar false positives that pile up in single-statement linters
 - Posts a find-or-create PR comment with per-finding detail; creates a Check Run with severity-mapped conclusion
@@ -147,7 +147,7 @@ enabled = ["bigint-over-int-preferred"]                # promote STYLE -> WARNIN
 | Cross-statement context                  | yes — suppresses FK / index / constraint rules on same-migration tables | per-statement only |
 | Out-of-the-box GitHub Action             | yes (this repo)                                 | shipped binary + DIY workflow   |
 | PR comments + Check Run                  | built-in                                        | DIY                             |
-| Rule count                               | 32 safety + 6 opt-in style                      | 37 rules                        |
+| Rule count                               | 33 safety + 6 opt-in style                      | 37 rules                        |
 | Default-mode signal on a 20-fixture corpus | 38 findings, all actionable                   | 199 findings                    |
 
 If you want the broadest rule catalog and you're comfortable wiring the action yourself, squawk is mature and well-maintained. If you want a one-paste install plus FK-to-new-table suppression by default, this is the trade.

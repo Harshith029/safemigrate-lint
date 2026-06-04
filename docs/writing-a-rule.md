@@ -9,6 +9,12 @@ finishes.
 Read [CONTRIBUTING.md](../CONTRIBUTING.md) first for the rule philosophy (fewer
 findings, all actionable, suppress false positives).
 
+> This walkthrough builds the **real** `refresh-matview-blocks-reads` rule that
+> ships in the catalog — the finished version lives at
+> [`src/safemigrate_lint/rules/refresh_matview_blocks_reads.py`](../src/safemigrate_lint/rules/refresh_matview_blocks_reads.py)
+> with fixtures `subtle_05` / `safe_09` / `safe_10`. The code below is trimmed for
+> teaching; diff it against the shipped file to see the production wording.
+
 ## Anatomy
 
 Every rule registers a `check` function with the `@register_rule` decorator:
@@ -58,10 +64,10 @@ So: node `ast.RefreshMatViewStmt`, boolean `.concurrent`, and `.relation.relname
 
 ## Step 2 — write the rule file
 
-`src/safemigrate_lint/rules/refresh_matview_concurrently_preferred.py`:
+`src/safemigrate_lint/rules/refresh_matview_blocks_reads.py`:
 
 ```python
-"""refresh-matview-concurrently-preferred — REFRESH MATERIALIZED VIEW without
+"""refresh-matview-blocks-reads — REFRESH MATERIALIZED VIEW without
 CONCURRENTLY locks the matview against reads for the whole refresh.
 
 Suppressed when the matview was created in this same migration (no readers yet).
@@ -80,7 +86,7 @@ from ..core.finding import Finding, Severity
 from ..core.state import MigrationState, table_created_in_migration
 from ._registry import RuleContext, register_rule
 
-RULE_ID = "refresh-matview-concurrently-preferred"
+RULE_ID = "refresh-matview-blocks-reads"
 
 
 @register_rule(
@@ -170,7 +176,7 @@ no-op, not an error, so always add a `safe_` fixture that *proves* it fires.
 Add the import to `src/safemigrate_lint/rules/__init__.py` (alphabetical):
 
 ```python
-    refresh_matview_concurrently_preferred,  # noqa: F401
+    refresh_matview_blocks_reads,  # noqa: F401
 ```
 
 The decorator only runs when the module is imported, so this line is what
