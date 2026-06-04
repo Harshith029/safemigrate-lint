@@ -59,6 +59,37 @@ The action's step exits non-zero whenever the lint finds anything (so workflows 
 
 In branch protection, require `safemigrate-lint` (the Check Run name) as a status check. The PR will be blocked on critical findings while warnings stay non-blocking.
 
+## Other ways to run it
+
+The same engine ships three ways — use whichever fits your workflow.
+
+### CLI
+
+```bash
+# from PyPI
+pipx install safemigrate-lint           # or: uv tool install safemigrate-lint
+# …or straight from source
+pipx install git+https://github.com/Harshith029/safemigrate-lint
+
+safemigrate-lint migrations/*.sql       # exit 0 clean · 1 findings · 2 input error
+safemigrate-lint migrations/*.sql --severity=critical,warning,style --format=markdown
+```
+
+### pre-commit
+
+Catch dangerous migrations before they're even committed:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/Harshith029/safemigrate-lint
+    rev: v1.0.0
+    hooks:
+      - id: safemigrate-lint
+```
+
+Runs on staged `*.sql` files and blocks the commit on any finding.
+
 ## Reference
 
 ### Inputs

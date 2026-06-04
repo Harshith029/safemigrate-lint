@@ -1,14 +1,52 @@
 [project]
 name = "safemigrate-lint"
 version = "1.0.0"
-description = "Open-source GitHub Action for Postgres migration linting"
+description = "Lint Postgres migration SQL for the dangerous operations that break production — as a GitHub Action, CLI, or pre-commit hook."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Pali Krishna Harshith" }]
+keywords = [
+    "postgres",
+    "postgresql",
+    "migration",
+    "migrations",
+    "linter",
+    "lint",
+    "sql",
+    "ci",
+    "github-action",
+    "pre-commit",
+    "database",
+    "schema",
+    "dba",
+    "devops",
+    "zero-downtime",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
 dependencies = [
     "pglast>=6.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Harshith029/safemigrate-lint"
+Repository = "https://github.com/Harshith029/safemigrate-lint"
+Changelog = "https://github.com/Harshith029/safemigrate-lint/blob/master/CHANGELOG.md"
+Issues = "https://github.com/Harshith029/safemigrate-lint/issues"
 
 [project.scripts]
 safemigrate-lint = "safemigrate_lint.cli:main"

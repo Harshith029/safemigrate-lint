@@ -1,0 +1,18 @@
+# Lets any repo run safemigrate-lint as a pre-commit hook:
+#
+#   # .pre-commit-config.yaml
+#   repos:
+#     - repo: https://github.com/Harshith029/safemigrate-lint
+#       rev: v1.0.0
+#       hooks:
+#         - id: safemigrate-lint
+#
+# pre-commit passes the staged *.sql files as positional args; the CLI exits
+# non-zero (1) when it finds anything, which fails the commit.
+- id: safemigrate-lint
+  name: safemigrate-lint
+  description: Lint Postgres migration SQL for the dangerous operations that break production.
+  entry: safemigrate-lint
+  language: python
+  types: [sql]
+  require_serial: true
