@@ -9,6 +9,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,17 +23,17 @@ jobs:
           version: "latest"
           enable-cache: true
 
-      - name: Set up Python 3.11
-        run: uv python install 3.11
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies (frozen lockfile)
-        run: uv sync --frozen
+        run: uv sync --frozen --python ${{ matrix.python-version }}
 
       - name: Lint with ruff
-        run: uv run ruff check src/ tests/ docker/
+        run: uv run --python ${{ matrix.python-version }} ruff check src/ tests/ docker/
 
       - name: Type-check with mypy
-        run: uv run mypy src/ docker/
+        run: uv run --python ${{ matrix.python-version }} mypy src/ docker/
 
       - name: Run tests
-        run: uv run pytest -v
+        run: uv run --python ${{ matrix.python-version }} pytest -v
