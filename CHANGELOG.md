@@ -3,6 +3,19 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] — 2026-06-04
+
+No behavior change — same findings as 1.1.0 (golden corpus unchanged).
+
+### Changed
+
+- Performance: the inline-ignore suppressor now finds a statement's line via binary search instead of a per-statement linear scan, and the engine dispatches statements to rules by node type (O(statements × rules) → O(statements)). ~50× faster analysis on large migration sets; linting is now parse-bound.
+
+### Internal
+
+- Consolidated duplicated AST helpers (`table_name`, `qualified_name`, `bare`) into `core/ast_utils.py`, removing ~130 lines of copy-paste.
+- Removed stale internal planning references from module/rule docstrings.
+
 ## [1.1.0] — 2026-06-04
 
 ### Added
@@ -56,5 +69,6 @@ Where safemigrate-lint adds coverage Atlas Pro paywalls or squawk doesn't ship:
 - JSON: sorted findings array with `rule_id`, `severity`, `file`, `line`, `column`, `message`, `help`, `suggested_fix`
 - Markdown: severity-grouped sections with code excerpts, help text, and suggested-fix blocks
 
+[1.1.1]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.0.0
