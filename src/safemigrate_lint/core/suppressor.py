@@ -21,6 +21,7 @@ statement are allowed.
 
 from __future__ import annotations
 
+import bisect
 import re
 from typing import Any
 
@@ -72,9 +73,10 @@ def parse_inline_ignores(
 def _line_start_offsets(sql: str) -> list[int]:
     """Byte offset of the first character of each line. line 0 always at offset 0."""
     offsets = [0]
-    for i, ch in enumerate(sql):
-        if ch == "\n":
-            offsets.append(i + 1)
+    idx = sql.find("\n")
+    while idx != -1:
+        offsets.append(idx + 1)
+        idx = sql.find("\n", idx + 1)
     return offsets
 
 
@@ -82,11 +84,10 @@ def _line_index_for_offset(line_starts: list[int], offset: int) -> int:
     """Return the 0-indexed line that contains the given byte offset. Statements
     whose pglast offset points at leading whitespace will land on the line
     BEFORE the keyword; we advance past blank lines in the caller."""
-    # binary search would be tidier; linear is fine for migration-file sizes
-    for i in range(len(line_starts) - 1):
-        if line_starts[i] <= offset < line_starts[i + 1]:
-            return i
-    return len(line_starts) - 1
+    # line_starts is sorted ascending, so the containing line is the last start
+    # that is <= offset. Binary search keeps this O(log n) per statement instead
+    # of a linear scan (the dominant cost on large migration files).
+    return bisect.bisect_right(line_starts, offset) - 1
 
 
 def _scan_back_for_ignore(lines: list[str], stmt_line_idx: int) -> list[str]:
