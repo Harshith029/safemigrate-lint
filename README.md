@@ -148,7 +148,7 @@ enabled = ["bigint-over-int-preferred"]                # promote STYLE -> WARNIN
 | Out-of-the-box GitHub Action             | yes (this repo)                                 | shipped binary + DIY workflow   |
 | PR comments + Check Run                  | built-in                                        | DIY                             |
 | Rule count                               | 33 safety + 6 opt-in style                      | 37 rules                        |
-| Default-mode signal on a 20-fixture corpus | 38 findings, all actionable                   | 199 findings                    |
+| Default-mode signal                      | fewer findings, tuned to be all-actionable      | broader catalog, noisier by default |
 
 If you want the broadest rule catalog and you're comfortable wiring the action yourself, squawk is mature and well-maintained. If you want a one-paste install plus FK-to-new-table suppression by default, this is the trade.
 
