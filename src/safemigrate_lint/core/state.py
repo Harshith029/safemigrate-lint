@@ -4,8 +4,8 @@ Tracks what this migration creates so rules can suppress false positives where
 the premise of a warning ("FK validation scan on a populated table") doesn't
 apply because the target was created in the same migration (empty).
 
-Scope for v1: tables_created. Columns and indexes can be added as we wire
-the rules that need them. See D1 Gap 2.
+Tracked so far: tables (incl. CREATE TABLE AS / matviews) and indexes created,
+plus transaction-block bookkeeping. Extend with more fields as rules need them.
 """
 
 from __future__ import annotations

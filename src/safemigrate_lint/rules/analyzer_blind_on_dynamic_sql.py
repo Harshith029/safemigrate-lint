@@ -1,4 +1,4 @@
-"""analyzer-blind-on-dynamic-sql — D1 Gap 6 + covers Atlas SA101 surface.
+"""analyzer-blind-on-dynamic-sql — flags dynamic SQL the analyzer cannot inspect.
 
 Fires WARNING on `DO $$ ... $$` blocks that contain `EXECUTE` statements
 with non-literal SQL strings (typically `EXECUTE format(...)` or

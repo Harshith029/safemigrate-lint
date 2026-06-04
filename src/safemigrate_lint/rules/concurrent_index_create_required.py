@@ -1,10 +1,11 @@
-"""require-concurrent-index-creation — first rule, used to validate the pipeline.
+"""concurrent-index-create-required — CREATE INDEX without CONCURRENTLY locks writes.
 
 Fires on CREATE INDEX statements that don't use CONCURRENTLY, except when the
 index targets a table created in the same migration (empty table, no lock pain).
 
-The suppression on same-migration tables is the cross-statement-context wedge
-from D1 Gap 2; this is the rule that validates the state machine works.
+The suppression on same-migration tables is the cross-statement-context feature:
+it exercises the state machine that distinguishes a populated table from one
+created earlier in the same file.
 """
 
 from __future__ import annotations

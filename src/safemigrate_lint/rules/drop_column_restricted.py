@@ -4,9 +4,9 @@ Fires CRITICAL on every `ALTER TABLE … DROP COLUMN …` statement. Even with
 IF EXISTS, the data in the column (if any) is permanently lost once the
 migration runs.
 
-Per D3 deferred-items, the recent-add-context suppression (downgrade when
-the column was added in a previous unmerged migration — D1 Gap 5) is v1.5
-work. v1 ships the rule with the inline-ignore comment as the escape hatch.
+A future refinement could downgrade the finding when the column was added in a
+recent unmerged migration (so no production data exists yet); for now the
+inline-ignore comment is the escape hatch.
 """
 
 from __future__ import annotations

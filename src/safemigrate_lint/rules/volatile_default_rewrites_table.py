@@ -12,8 +12,8 @@ AccessExclusiveLock.
 
 We detect volatile defaults by matching the function name against a known
 list of common volatile functions. False negatives possible on custom
-VOLATILE user-defined functions (we'd need pg_proc lookup to detect those,
-which requires a DB connection — out of scope per D2 non-goals).
+VOLATILE user-defined functions (detecting those would need a pg_proc lookup,
+i.e. a live DB connection, which is out of scope for static analysis).
 """
 
 from __future__ import annotations

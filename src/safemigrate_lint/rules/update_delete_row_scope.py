@@ -6,10 +6,9 @@ one of the most common root causes of replication lag and connection-pool
 exhaustion incidents. The rule defensively prompts the author to verify the
 row scope.
 
-Per D1 Gap 4: squawk has no rule for any UPDATE/DELETE; Atlas does not either;
-only Bytebase covers this. We adopt the rule because the corpus and incident
-literature both show this is a real production-hazard pattern that no other
-free tool catches.
+squawk has no rule for any UPDATE/DELETE and Atlas does not either; only Bytebase
+covers this. We adopt it because the corpus and incident literature both show
+unbounded mass mutations are a real production hazard no other free tool catches.
 """
 
 from __future__ import annotations

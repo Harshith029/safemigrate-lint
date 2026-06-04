@@ -10,8 +10,7 @@ Our implementation matches: applies_to=(AlterTableStmt,) excludes inline
 generated columns naturally; pglast 7.13 doesn't yet parse VIRTUAL syntax
 so we never see those.
 
-This is the rule the D1 wedge analysis specifically called out as
-Atlas-paywalled-and-nobody-else-has-it (D1 Gap 6).
+This is coverage Atlas paywalls and the free OSS linters don't ship.
 """
 
 from __future__ import annotations

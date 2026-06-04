@@ -67,7 +67,7 @@ class Rule:
     `applies_to` is a tuple of pglast AST node types. The engine dispatches
     a statement to a rule iff `isinstance(stmt, rule.applies_to)`.
     `doc` is a one-paragraph human-readable explanation used by the PR comment
-    renderer (week 4).
+    renderer.
     """
 
     id: str
