@@ -152,6 +152,12 @@ enabled = ["bigint-over-int-preferred"]                # promote STYLE -> WARNIN
 
 If you want the broadest rule catalog and you're comfortable wiring the action yourself, squawk is mature and well-maintained. If you want a one-paste install plus FK-to-new-table suppression by default, this is the trade.
 
+## Contributing
+
+Contributions welcome — especially new rules and false-positive reports. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup and rule philosophy, and
+[docs/writing-a-rule.md](docs/writing-a-rule.md) for a step-by-step rule walkthrough.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
