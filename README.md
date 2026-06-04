@@ -148,7 +148,9 @@ enabled = ["bigint-over-int-preferred"]                # promote STYLE -> WARNIN
 | Out-of-the-box GitHub Action             | yes (this repo)                                 | shipped binary + DIY workflow   |
 | PR comments + Check Run                  | built-in                                        | DIY                             |
 | Rule count                               | 33 safety + 6 opt-in style                      | 37 rules                        |
-| Default-mode signal                      | fewer findings, tuned to be all-actionable      | broader catalog, noisier by default |
+| Default-mode signal on a 23-fixture corpus | 39 findings, all actionable                   | 205 findings                    |
+
+> Measured with squawk 2.56.0, both tools in their default configuration, on this repo's `fixtures/migrations/`. Most of squawk's extra findings are its style/opinion rules (`prefer-robust-stmts`, `prefer-bigint-over-int`, `prefer-identity`, …), which safemigrate-lint ships as opt-in STYLE rules rather than firing by default.
 
 If you want the broadest rule catalog and you're comfortable wiring the action yourself, squawk is mature and well-maintained. If you want a one-paste install plus FK-to-new-table suppression by default, this is the trade.
 
