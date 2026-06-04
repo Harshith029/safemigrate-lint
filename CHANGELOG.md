@@ -3,7 +3,7 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] — 2026-06-04
 
 ### Added
 
@@ -56,4 +56,5 @@ Where safemigrate-lint adds coverage Atlas Pro paywalls or squawk doesn't ship:
 - JSON: sorted findings array with `rule_id`, `severity`, `file`, `line`, `column`, `message`, `help`, `suggested_fix`
 - Markdown: severity-grouped sections with code excerpts, help text, and suggested-fix blocks
 
+[1.1.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.0.0
