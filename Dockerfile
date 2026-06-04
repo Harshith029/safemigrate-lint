@@ -7,7 +7,9 @@
 # the same pglast.
 FROM python:3.11-slim
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Pinned (not :latest) so a tagged action version always builds with the same
+# uv. Bump deliberately; the image is published for every uv release.
+COPY --from=ghcr.io/astral-sh/uv:0.11.16 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
