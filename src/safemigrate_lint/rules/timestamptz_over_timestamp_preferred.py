@@ -22,6 +22,7 @@ from typing import Any
 from pglast import ast
 from pglast.enums import AlterTableType
 
+from ..core.ast_utils import table_name
 from ..core.finding import Finding, Severity
 from ..core.state import MigrationState
 from ._registry import RuleContext, register_rule
@@ -48,12 +49,12 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
     columns_to_check: list[tuple[str, ast.ColumnDef]] = []
 
     if isinstance(stmt, ast.CreateStmt):
-        table = _table_name(stmt.relation)
+        table = table_name(stmt.relation)
         for elt in stmt.tableElts or ():
             if isinstance(elt, ast.ColumnDef):
                 columns_to_check.append((table, elt))
     elif isinstance(stmt, ast.AlterTableStmt):
-        table = _table_name(stmt.relation)
+        table = table_name(stmt.relation)
         for cmd in stmt.cmds or ():
             if not isinstance(cmd, ast.AlterTableCmd):
                 continue
@@ -111,9 +112,3 @@ def _is_timestamp_without_tz(column_def: ast.ColumnDef) -> bool:
     return last == _TIMESTAMP_TYPE_NAME
 
 
-def _table_name(relation: Any) -> str:
-    if relation is None:
-        return ""
-    schemaname = getattr(relation, "schemaname", None) or ""
-    relname = getattr(relation, "relname", None) or ""
-    return f"{schemaname}.{relname}" if schemaname else relname

@@ -16,6 +16,8 @@ from typing import Any
 from pglast import ast
 from pglast.enums import TransactionStmtKind
 
+from .ast_utils import bare, table_name
+
 
 @dataclass(slots=True)
 class MigrationState:
@@ -39,22 +41,6 @@ class MigrationState:
     has_unmatched_begin: bool = False
 
 
-def _table_name(relation: Any) -> str:
-    """Extract canonical (possibly schema-qualified) table name from a RangeVar."""
-    if relation is None:
-        return ""
-    schemaname = getattr(relation, "schemaname", None) or ""
-    relname = getattr(relation, "relname", None) or ""
-    if schemaname:
-        return f"{schemaname}.{relname}"
-    return relname
-
-
-def _bare(name: str) -> str:
-    """Drop the schema prefix from a qualified name."""
-    return name.rsplit(".", 1)[-1] if "." in name else name
-
-
 class StateBuilder:
     """Walks parsed statements in source order, populates a MigrationState."""
 
@@ -68,7 +54,7 @@ class StateBuilder:
             offset = raw_offset + 1
 
             if isinstance(stmt, ast.CreateStmt):
-                name = _table_name(stmt.relation)
+                name = table_name(stmt.relation)
                 if name:
                     state.tables_created.add(name)
             elif isinstance(stmt, ast.CreateTableAsStmt):
@@ -78,7 +64,7 @@ class StateBuilder:
                 # suppress on objects created earlier in the same migration.
                 rel = stmt.into.rel if stmt.into else None
                 if rel and rel.relname:
-                    state.tables_created.add(_table_name(rel))
+                    state.tables_created.add(table_name(rel))
             elif isinstance(stmt, ast.IndexStmt):
                 if stmt.idxname:
                     state.indexes_created.add(stmt.idxname)
@@ -112,6 +98,6 @@ def table_created_in_migration(state: MigrationState, target: str) -> bool:
     """
     if target in state.tables_created:
         return True
-    bare_target = _bare(target)
-    bare_created = {_bare(t) for t in state.tables_created}
+    bare_target = bare(target)
+    bare_created = {bare(t) for t in state.tables_created}
     return bare_target in bare_created

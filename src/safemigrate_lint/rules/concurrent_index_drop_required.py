@@ -17,6 +17,7 @@ from typing import Any
 from pglast import ast
 from pglast.enums import ObjectType
 
+from ..core.ast_utils import bare, qualified_name
 from ..core.finding import Finding, Severity
 from ..core.state import MigrationState
 from ._registry import RuleContext, register_rule
@@ -45,11 +46,11 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
     line, column = ctx.line_col()
 
     for obj in stmt.objects or ():
-        index_name = _qualified_name(obj)
+        index_name = qualified_name(obj)
 
         # Suppress if the index was created in this same migration — transient
         # within-migration indexes don't see production load during the lock.
-        if index_name and _bare(index_name) in {_bare(i) for i in state.indexes_created}:
+        if index_name and bare(index_name) in {bare(i) for i in state.indexes_created}:
             continue
 
         yield Finding(
@@ -74,18 +75,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 f"DROP INDEX CONCURRENTLY {index_name or 'index_name'};"
             ),
         )
-
-
-def _qualified_name(obj: Any) -> str:
-    if obj is None:
-        return ""
-    parts: list[str] = []
-    for part in obj:
-        sval = getattr(part, "sval", None)
-        if sval:
-            parts.append(sval)
-    return ".".join(parts)
-
-
-def _bare(name: str) -> str:
-    return name.rsplit(".", 1)[-1] if "." in name else name

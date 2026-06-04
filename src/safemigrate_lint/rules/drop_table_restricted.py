@@ -12,6 +12,7 @@ from typing import Any
 from pglast import ast
 from pglast.enums import ObjectType
 
+from ..core.ast_utils import qualified_name
 from ..core.finding import Finding, Severity
 from ..core.state import MigrationState
 from ._registry import RuleContext, register_rule
@@ -41,7 +42,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
     line, col_offset = ctx.line_col()
 
     for obj in stmt.objects or ():
-        table = _qualified_name(obj)
+        table = qualified_name(obj)
         yield Finding(
             rule_id=RULE_ID,
             severity=Severity.CRITICAL,
@@ -62,15 +63,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             ),
             suggested_fix=None,
         )
-
-
-def _qualified_name(obj: Any) -> str:
-    """Join a tuple of pglast String nodes into a dotted qualified name."""
-    if obj is None:
-        return ""
-    parts: list[str] = []
-    for part in obj:
-        sval = getattr(part, "sval", None)
-        if sval:
-            parts.append(sval)
-    return ".".join(parts)

@@ -23,6 +23,7 @@ from typing import Any
 from pglast import ast
 from pglast.enums import AlterTableType, ConstrType
 
+from ..core.ast_utils import table_name
 from ..core.finding import Finding, Severity
 from ..core.state import MigrationState, table_created_in_migration
 from ._registry import RuleContext, register_rule
@@ -46,7 +47,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
     if not isinstance(stmt, ast.AlterTableStmt):
         return
 
-    table = _table_name(stmt.relation)
+    table = table_name(stmt.relation)
     if table and table_created_in_migration(state, table):
         return  # empty table — no validation cost
 
@@ -95,9 +96,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         )
 
 
-def _table_name(relation: Any) -> str:
-    if relation is None:
-        return ""
-    schemaname = getattr(relation, "schemaname", None) or ""
-    relname = getattr(relation, "relname", None) or ""
-    return f"{schemaname}.{relname}" if schemaname else relname
