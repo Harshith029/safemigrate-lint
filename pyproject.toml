@@ -58,6 +58,14 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/safemigrate_lint"]
 
+[tool.hatch.build.targets.sdist]
+# Keep launch/marketing drafts and the demo image (referenced by absolute URL)
+# out of the published source distribution.
+exclude = [
+    "/marketing",
+    "/docs/demo.png",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",

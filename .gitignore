@@ -42,3 +42,6 @@ Thumbs.db
 
 # Project-specific
 fixtures/squawk_stderr.log
+
+# Local launch/marketing drafts — never commit or package these
+marketing/
