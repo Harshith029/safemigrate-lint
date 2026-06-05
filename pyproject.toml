@@ -1,6 +1,6 @@
 [project]
 name = "safemigrate-lint"
-version = "1.1.1"
+version = "1.1.2"
 description = "Lint Postgres migration SQL for the dangerous operations that break production — as a GitHub Action, CLI, or pre-commit hook."
 readme = "README.md"
 requires-python = ">=3.11"

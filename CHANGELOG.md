@@ -3,6 +3,23 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] — 2026-06-05
+
+Build, test, and docs hardening. No change to rule behavior — findings are identical to 1.1.1.
+
+### Changed
+
+- Docker action image pins uv to 0.11.16 (was `:latest`) so a tagged action version always builds reproducibly.
+
+### Internal
+
+- 100% rule test coverage: every rule has a per-rule trigger test, plus a guard that fails CI if a new rule ships without one (was ~15 of 39 rules covered).
+- CI now runs the suite on Python 3.11, 3.12, and 3.13 (matches the package's supported-version claim).
+
+### Docs
+
+- README: PR-comment demo, PyPI version badge, and a verified head-to-head benchmark (squawk 2.56.0, both default config: 205 findings vs 39 on the fixture corpus).
+
 ## [1.1.1] — 2026-06-04
 
 No behavior change — same findings as 1.1.0 (golden corpus unchanged).
@@ -69,6 +86,7 @@ Where safemigrate-lint adds coverage Atlas Pro paywalls or squawk doesn't ship:
 - JSON: sorted findings array with `rule_id`, `severity`, `file`, `line`, `column`, `message`, `help`, `suggested_fix`
 - Markdown: severity-grouped sections with code excerpts, help text, and suggested-fix blocks
 
+[1.1.2]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.2
 [1.1.1]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.0.0
