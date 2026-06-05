@@ -54,12 +54,15 @@ def parse_inline_ignores(
 
     for raw_stmt in statements:
         raw_offset = getattr(raw_stmt, "stmt_location", None) or 0
-        statement_offset = raw_offset + 1  # match RuleContext convention
+        statement_offset = raw_offset + 1  # the key — matches RuleContext convention
 
-        # The statement starts at some byte; pglast's stmt_location often points
-        # AT leading whitespace (e.g. the newline before the statement). Look at
-        # the line containing the actual statement keyword.
-        stmt_line_idx = _line_index_for_offset(line_starts, raw_offset)
+        # pglast reports stmt_location at the END of the previous statement (just
+        # after its `;`), so raw_offset can sit on the prior statement's line.
+        # Advance past whitespace and line comments to the real keyword before
+        # locating its line — otherwise we'd scan back from the wrong statement
+        # and miss an ignore comment placed between two statements.
+        keyword_offset = _advance_to_keyword(sql, raw_offset)
+        stmt_line_idx = _line_index_for_offset(line_starts, keyword_offset)
 
         # Walk backwards from the line before the statement, skipping blank lines,
         # looking for a single ignore comment.
@@ -78,6 +81,27 @@ def _line_start_offsets(sql: str) -> list[int]:
         offsets.append(idx + 1)
         idx = sql.find("\n", idx + 1)
     return offsets
+
+
+def _advance_to_keyword(sql: str, offset: int) -> int:
+    """Advance from `offset` past whitespace and `-- line comments` to the first
+    real token. Mirrors `RuleContext.line_col`: pglast points a statement's
+    location at the end of the previous statement, so this lands on the actual
+    statement keyword. Block comments (`/* ... */`) are uncommon in migrations
+    and not handled."""
+    n = len(sql)
+    offset = max(0, offset)
+    while offset < n:
+        ch = sql[offset]
+        if ch in " \t\r\n":
+            offset += 1
+            continue
+        if ch == "-" and offset + 1 < n and sql[offset + 1] == "-":
+            nl = sql.find("\n", offset)
+            offset = n if nl == -1 else nl + 1
+            continue
+        break
+    return offset
 
 
 def _line_index_for_offset(line_starts: list[int], offset: int) -> int:

@@ -1,0 +1,12 @@
+[
+  {
+    "rule_id": "drop-column-restricted",
+    "severity": "critical",
+    "file": "subtle_06_inline_ignore_suppression.sql",
+    "line": 6,
+    "column": 0,
+    "message": "DROP COLUMN legacy_referrer on users is irreversible data loss.",
+    "help": "DROP COLUMN removes the column and all its data. There is no rollback path once the migration runs. If this column has production data, ensure you have a backup or are intentionally accepting the loss. To suppress, add `-- safemigrate:ignore=drop-column-restricted reason=\"...\"` on the line immediately preceding the ALTER TABLE statement.",
+    "suggested_fix": null
+  }
+]
