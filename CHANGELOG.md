@@ -3,6 +3,13 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] — 2026-06-05
+
+### Fixed
+
+- Inline `-- safemigrate:ignore=<rule>` suppression now works on a statement that **follows another statement**. pglast reports a statement's location at the end of the previous statement, so the scanner looked at the wrong line and missed an ignore comment placed between two statements — the finding fired anyway. Suppression on the first statement was unaffected. The feature now has end-to-end + unit test coverage (it was previously untested).
+- README: pre-commit example pins `rev: v1.1.2` (was the stale `v1.0.0`).
+
 ## [1.1.2] — 2026-06-05
 
 Build, test, and docs hardening. No change to rule behavior — findings are identical to 1.1.1.
@@ -86,6 +93,7 @@ Where safemigrate-lint adds coverage Atlas Pro paywalls or squawk doesn't ship:
 - JSON: sorted findings array with `rule_id`, `severity`, `file`, `line`, `column`, `message`, `help`, `suggested_fix`
 - Markdown: severity-grouped sections with code excerpts, help text, and suggested-fix blocks
 
+[1.1.3]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.3
 [1.1.2]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.2
 [1.1.1]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.0
