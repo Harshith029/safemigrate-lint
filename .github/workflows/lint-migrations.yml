@@ -18,6 +18,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lint migration SQL
+        # Findings make the action exit non-zero; like the README tells users,
+        # don't fail the job on that — the safemigrate-lint Check Run is the signal.
+        continue-on-error: true
         uses: ./
         with:
           paths: 'fixtures/migrations/**/*.sql'
