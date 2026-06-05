@@ -1,0 +1,40 @@
+name: False positive / missed risk
+description: A rule fired when it shouldn't have, or didn't fire when it should have.
+labels: ["rule-feedback"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type
+      options:
+        - False positive (fired but the operation is actually safe)
+        - False negative (a risky operation that wasn't flagged)
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      description: e.g. `concurrent-index-create-required`. For a false negative, the rule you expected to fire (or "none exists").
+  - type: textarea
+    id: sql
+    attributes:
+      label: Migration SQL
+      description: The exact SQL — minimal is best. This is what lets us reproduce.
+      render: sql
+    validations:
+      required: true
+  - type: input
+    id: pgversion
+    attributes:
+      label: Target Postgres version
+      placeholder: "e.g. 15"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is this wrong?
+      description: Why the finding is a false positive (the operation is safe in your case), or why the missed operation is actually risky.
+    validations:
+      required: true

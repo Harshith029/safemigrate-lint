@@ -1,0 +1,16 @@
+name: Feature or new-rule request
+description: Suggest a feature, or a new migration check.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: For a new rule, describe the dangerous operation and the production impact it causes (lock, rewrite, data loss, broken invariant).
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example SQL (optional)
+      render: sql

@@ -1,0 +1,43 @@
+name: Bug report
+description: It crashed, errored, or behaved incorrectly (not a rule false-positive/negative).
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you expected vs. what actually happened.
+    validations:
+      required: true
+  - type: textarea
+    id: sql
+    attributes:
+      label: Migration SQL
+      description: The smallest SQL that reproduces it.
+      render: sql
+    validations:
+      required: true
+  - type: input
+    id: pgversion
+    attributes:
+      label: Target Postgres version
+      placeholder: "e.g. 15"
+    validations:
+      required: true
+  - type: dropdown
+    id: how
+    attributes:
+      label: How are you running it?
+      options:
+        - GitHub Action
+        - CLI
+        - pre-commit
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: safemigrate-lint version
+      placeholder: "e.g. 1.1.3"
+    validations:
+      required: true
