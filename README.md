@@ -91,6 +91,39 @@ The action's step exits non-zero whenever the lint finds anything (so workflows 
 
 In branch protection, require `safemigrate-lint` (the Check Run name) as a status check. The PR will be blocked on critical findings while warnings stay non-blocking.
 
+### Linting only the migrations a PR changed
+
+By default the action lints **every** file matching `paths`. On a repo with a lot
+of existing migrations, that re-reports findings on old, already-shipped ones on
+every PR. To judge a PR only on the migrations it actually introduces, compute
+the diff and pass it to `paths` — pure `git`, no third-party action:
+
+```yaml
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                          # so the diff can see the base branch
+      - id: changed
+        run: |
+          base="${{ github.base_ref }}"
+          files=$(git diff --name-only --diff-filter=ACMR "origin/$base...HEAD" \
+                  | grep -E '^migrations/.*\.sql$' | tr '\n' ' ' || true)
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+      - if: steps.changed.outputs.files != ''
+        uses: Harshith029/safemigrate-lint@v1
+        continue-on-error: true
+        with:
+          paths: ${{ steps.changed.outputs.files }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+This is the recommended setup for **existing** projects: new PRs are judged only
+on the migrations they add, not your whole history.
+
 ## Other ways to run it
 
 The same engine ships three ways — use whichever fits your workflow.

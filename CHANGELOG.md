@@ -10,6 +10,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Inline `-- safemigrate:ignore=<rule>` suppression now works on a statement that **follows another statement**. pglast reports a statement's location at the end of the previous statement, so the scanner looked at the wrong line and missed an ignore comment placed between two statements — the finding fired anyway. Suppression on the first statement was unaffected. The feature now has end-to-end + unit test coverage (it was previously untested).
 - README: pre-commit example pins `rev: v1.1.2` (was the stale `v1.0.0`).
 
+### Added
+
+- README: a "Linting only the migrations a PR changed" workflow that scopes the action to the PR diff (pure `git`, no third-party action) — the recommended setup for repos with existing migration history, so PRs aren't re-flagged on already-shipped migrations.
+
 ## [1.1.2] — 2026-06-05
 
 Build, test, and docs hardening. No change to rule behavior — findings are identical to 1.1.1.
