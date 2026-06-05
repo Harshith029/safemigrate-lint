@@ -15,10 +15,7 @@ A GitHub Action that lints Postgres migration SQL on every PR. Catches the opera
 
 On every pull request, safemigrate-lint posts a comment that groups findings by severity — each with the lock it takes and the safe rewrite — and sets a Check Run conclusion you can require in branch protection.
 
-<!-- Drop the screenshot in once captured (see marketing/sample-output.md or open a PR
-     touching a dangerous migration so the self-test workflow posts a real comment):
-     ![safemigrate-lint comment on a pull request](docs/demo.png) -->
-
+![safemigrate-lint comment demo](docs/demo.png)
 <details>
 <summary><b>Example PR comment</b> (click to expand)</summary>
 
