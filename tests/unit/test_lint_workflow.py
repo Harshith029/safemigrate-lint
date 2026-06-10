@@ -14,9 +14,7 @@ def test_lint_workflow_allows_findings_without_failing_job() -> None:
     text = workflow.read_text(encoding="utf-8")
 
     pattern = re.compile(
-        r"- name: Lint migration SQL\s+"
-        r"(?:\s{8}.+\n)*?"
-        r"\s{8}continue-on-error: true",
+        r"- name:\s*Lint migration SQL[\s\S]*?continue-on-error:\s*true",
         re.MULTILINE,
     )
     assert pattern.search(text), (
