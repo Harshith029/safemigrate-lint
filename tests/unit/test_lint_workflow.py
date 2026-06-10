@@ -25,7 +25,7 @@ def test_lint_workflow_allows_findings_without_failing_job() -> None:
 
     indent_level = len(lines[start]) - len(lines[start].lstrip())
     step_lines: list[str] = []
-    for line in lines[start + 1 :]:
+    for line in lines[start + 1:]:
         sibling_step = (
             line.lstrip().startswith("- name:")
             and (len(line) - len(line.lstrip()) == indent_level)
@@ -34,14 +34,14 @@ def test_lint_workflow_allows_findings_without_failing_job() -> None:
             break
         step_lines.append(line)
 
-    def _is_truthy_continue_on_error(line: str) -> bool:
+    def _is_true_continue_on_error(line: str) -> bool:
         stripped = line.strip()
         if not stripped.startswith("continue-on-error:"):
             return False
         value = stripped.split(":", 1)[1].strip().strip("'\"").lower()
-        return value in {"true", "yes", "on"}
+        return value == "true"
 
-    assert any(_is_truthy_continue_on_error(line) for line in step_lines), (
+    assert any(_is_true_continue_on_error(line) for line in step_lines), (
         "The lint workflow must set continue-on-error for the migration lint step "
         "so findings do not fail the Actions job."
     )
