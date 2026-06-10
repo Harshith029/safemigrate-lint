@@ -19,14 +19,19 @@ def test_lint_workflow_allows_findings_without_failing_job() -> None:
     )
     assert start is not None, "Expected 'Lint migration SQL' step was not found in workflow."
 
-    step_prefix = " " * (len(lines[start]) - len(lines[start].lstrip())) + "- name:"
+    indent_level = len(lines[start]) - len(lines[start].lstrip())
+    step_prefix = " " * indent_level + "- name:"
     step_lines: list[str] = []
     for line in lines[start + 1 :]:
         if line.startswith(step_prefix):
             break
-        step_lines.append(line.strip())
+        step_lines.append(line)
 
-    assert any(line == "continue-on-error: true" for line in step_lines), (
+    assert any(
+        (len(line) - len(line.lstrip()) > indent_level)
+        and line.lstrip() == "continue-on-error: true"
+        for line in step_lines
+    ), (
         "The lint workflow must set continue-on-error for the migration lint step "
         "so findings do not fail the Actions job."
     )
