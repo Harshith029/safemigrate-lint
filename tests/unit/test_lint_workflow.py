@@ -14,7 +14,11 @@ def test_lint_workflow_allows_findings_without_failing_job() -> None:
 
     lines = text.splitlines()
     start = next(
-        (i for i, line in enumerate(lines) if "- name: Lint migration SQL" in line),
+        (
+            i
+            for i, line in enumerate(lines)
+            if line.lstrip().startswith("- name:") and "Lint migration SQL" in line
+        ),
         None,
     )
     assert start is not None, "Expected 'Lint migration SQL' step was not found in workflow."
@@ -27,11 +31,7 @@ def test_lint_workflow_allows_findings_without_failing_job() -> None:
             break
         step_lines.append(line)
 
-    assert any(
-        (len(line) - len(line.lstrip()) > indent_level)
-        and line.lstrip() == "continue-on-error: true"
-        for line in step_lines
-    ), (
+    assert any(line.lstrip() == "continue-on-error: true" for line in step_lines), (
         "The lint workflow must set continue-on-error for the migration lint step "
         "so findings do not fail the Actions job."
     )
