@@ -13,14 +13,19 @@ def test_lint_workflow_allows_findings_without_failing_job() -> None:
     text = workflow.read_text(encoding="utf-8")
 
     lines = text.splitlines()
-    start = next(i for i, line in enumerate(lines) if "- name: Lint migration SQL" in line)
+    start = next(
+        (i for i, line in enumerate(lines) if "- name: Lint migration SQL" in line),
+        None,
+    )
+    assert start is not None, "Expected 'Lint migration SQL' step was not found in workflow."
+
     step_lines: list[str] = []
     for line in lines[start + 1 :]:
         if line.lstrip().startswith("- name:"):
             break
         step_lines.append(line.strip())
 
-    assert "continue-on-error: true" in step_lines, (
+    assert any(line == "continue-on-error: true" for line in step_lines), (
         "The lint workflow must set continue-on-error for the migration lint step "
         "so findings do not fail the Actions job."
     )
