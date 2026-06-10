@@ -19,9 +19,10 @@ def test_lint_workflow_allows_findings_without_failing_job() -> None:
     )
     assert start is not None, "Expected 'Lint migration SQL' step was not found in workflow."
 
+    step_prefix = " " * (len(lines[start]) - len(lines[start].lstrip())) + "- name:"
     step_lines: list[str] = []
     for line in lines[start + 1 :]:
-        if line.lstrip().startswith("- name:"):
+        if line.startswith(step_prefix):
             break
         step_lines.append(line.strip())
 
