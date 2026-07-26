@@ -7,7 +7,13 @@
     "column": 0,
     "message": "ADD COLUMN fts_tokens GENERATED ALWAYS AS ... STORED on page_section rewrites every row and locks the table for the duration.",
     "help": "STORED generated columns store the computed value physically. Postgres must evaluate the generation expression for every existing row and write the result, requiring a full table rewrite under AccessExclusiveLock. On large tables this blocks reads and writes for minutes. The expand-contract pattern: ADD COLUMN nullable, backfill in batches with explicit UPDATEs, optionally promote to GENERATED later. Postgres 18+ VIRTUAL generated columns are computed on read and don't trigger a rewrite (but require a much newer Postgres version).",
-    "suggested_fix": "-- Three-step expand-contract for a STORED generated column:\n-- 1. ALTER TABLE page_section ADD COLUMN fts_tokens <type>;\n-- 2. Backfill: UPDATE page_section SET fts_tokens = <expression> WHERE fts_tokens IS NULL ORDER BY <pk> LIMIT N;\n-- 3. Future-row trigger or app-level write-side compute."
+    "suggested_fix": "-- Three-step expand-contract for a STORED generated column:\n-- 1. ALTER TABLE page_section ADD COLUMN fts_tokens <type>;\n-- 2. Backfill: UPDATE page_section SET fts_tokens = <expression> WHERE fts_tokens IS NULL ORDER BY <pk> LIMIT N;\n-- 3. Future-row trigger or app-level write-side compute.",
+    "lock_impact": {
+      "lock": "ACCESS EXCLUSIVE",
+      "held": "full table rewrite",
+      "blocks": "reads + writes",
+      "note": "safe path: add a nullable column and backfill in batches"
+    }
   },
   {
     "rule_id": "concurrent-index-create-required",
@@ -17,6 +23,12 @@
     "column": 0,
     "message": "CREATE INDEX fts_search_index without CONCURRENTLY blocks writes on page_section for the duration of the build.",
     "help": "Non-concurrent CREATE INDEX takes AccessExclusiveLock for the full build duration. On a populated table this blocks all writes (UPDATE/INSERT/DELETE) until the index is built \u2014 minutes on a large table. CREATE INDEX CONCURRENTLY uses a slower but non-blocking build path. It cannot run inside a transaction, so it must be its own migration statement.",
-    "suggested_fix": "CREATE INDEX CONCURRENTLY fts_search_index ON page_section (...);"
+    "suggested_fix": "CREATE INDEX CONCURRENTLY fts_search_index ON page_section (...);",
+    "lock_impact": {
+      "lock": "SHARE",
+      "held": "for the whole index build",
+      "blocks": "writes (reads still OK)",
+      "note": "safe path: CREATE INDEX CONCURRENTLY \u2014 ShareUpdateExclusive, blocks neither"
+    }
   }
 ]

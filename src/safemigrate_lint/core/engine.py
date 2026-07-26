@@ -7,9 +7,11 @@ dispatch. Rules own their own subtree traversal.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from .finding import Finding
+from .lock_impact import lock_impact_for
 from .parser import ParseResult
 from .state import MigrationState
 
@@ -48,7 +50,10 @@ def analyze(result: ParseResult, state: MigrationState) -> list[Finding]:
             if rule.id in stmt_suppressions:
                 continue
             for finding in rule.check(inner, state, ctx):
-                findings.append(finding)
+                # Attach the rule's lock impact (mode/duration/what it blocks),
+                # if any, so reporters and JSON consumers get it for free.
+                impact = lock_impact_for(finding.rule_id)
+                findings.append(replace(finding, lock_impact=impact) if impact else finding)
 
     return findings
 

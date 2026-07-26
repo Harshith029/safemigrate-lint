@@ -9,6 +9,7 @@ A GitHub Action that lints Postgres migration SQL on every PR. Catches the opera
 - 33 safety rules + 6 opt-in style rules across CRITICAL / WARNING / STYLE tiers
 - Real Postgres parser via [pglast](https://github.com/lelit/pglast) (libpg_query) — handles extension SQL (TimescaleDB, PostGIS) that other linters trip on
 - Cross-statement context — suppresses FK-to-new-table and similar false positives that pile up in single-statement linters
+- Lock impact on each finding — which lock the operation takes, how long it's held, and what it blocks
 - Posts a find-or-create PR comment with per-finding detail; creates a Check Run with severity-mapped conclusion
 
 ## Demo
@@ -25,14 +26,23 @@ On every pull request, safemigrate-lint posts a comment that groups findings by 
 
 **2 findings** — 1 critical, 1 warning.
 
+🔒 Heaviest lock: ACCESS EXCLUSIVE — blocks reads + writes.
+
 ### 🔴 CRITICAL — drop-column-restricted
 migrations/0042_cleanup.sql:2
 DROP COLUMN deleteat on threads is irreversible data loss.
+
+🔒 Lock: ACCESS EXCLUSIVE | held: instant (catalog only) | blocks: reads + writes (briefly)
+the real risk is irreversible data loss, not the lock
 
 ### 🟡 WARNING — constraint-not-valid-required
 migrations/0042_cleanup.sql:8
 ADD CONSTRAINT orders_user_fk FOREIGN KEY without NOT VALID requires a full
 table scan, holding AccessExclusiveLock for the duration.
+
+🔒 Lock: ACCESS EXCLUSIVE | held: table scan to validate | blocks: reads + writes
+safe path: ADD ... NOT VALID (instant), then VALIDATE CONSTRAINT
+(ShareUpdateExclusive — non-blocking)
 
 Suggested fix:
   ALTER TABLE orders ADD CONSTRAINT orders_user_fk FOREIGN KEY (...) NOT VALID;
@@ -179,6 +189,45 @@ Runs on staged `*.sql` files and blocks the commit on any finding.
 | `contents: read`        | checking out migration files              |
 | `pull-requests: write`  | posting / editing the PR comment          |
 | `checks: write`         | creating the Check Run                    |
+
+### Lock impact
+
+Findings whose concern is a lock carry a `lock_impact` object — the lock mode the
+operation acquires, how long it's held, and what it blocks. This is derived
+statically from the Postgres documentation; **no database connection is involved**.
+
+```json
+{
+  "rule_id": "constraint-not-valid-required",
+  "severity": "warning",
+  "lock_impact": {
+    "lock": "ACCESS EXCLUSIVE",
+    "held": "table scan to validate",
+    "blocks": "reads + writes",
+    "note": "safe path: ADD ... NOT VALID (instant), then VALIDATE CONSTRAINT (ShareUpdateExclusive — non-blocking)"
+  }
+}
+```
+
+The markdown report adds a per-finding lock line plus a "Heaviest lock" summary at
+the top, so a reviewer can see the worst lock in the migration without reading
+every finding.
+
+25 of the 39 rules carry a lock impact. The other 14 are omitted deliberately
+rather than left as a gap:
+
+| omitted                                                        | why                                          |
+| -------------------------------------------------------------- | -------------------------------------------- |
+| style + type-choice rules                                        | opinions about types and syntax, not locks   |
+| correctness rules (duplicate index columns, enum value ordering) | the concern is a broken result, not blocking |
+| `analyzer-blind-on-dynamic-sql`                                  | unknowable by definition                     |
+| `DROP DATABASE`, transaction nesting / uncommitted transaction   | no table lock to report                      |
+| `index-concurrent-in-transaction-banned`                         | Postgres rejects it *before* it acquires anything |
+
+The `note` field is used honestly. Several operations take a heavy lock only
+briefly — `DROP COLUMN` is ACCESS EXCLUSIVE but catalog-only and instant — so the
+note says the real risk is data loss or application breakage rather than implying
+an outage the operation won't cause.
 
 ### Inline suppression
 

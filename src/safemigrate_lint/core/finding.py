@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 
+from .lock_impact import LockImpact
+
 
 class Severity(StrEnum):
     """Severity tiers.
@@ -47,9 +49,16 @@ class Finding:
     help: str | None = None
     # Optional one-line suggested fix. Renderer shows this as "Suggested fix: ...".
     suggested_fix: str | None = None
+    # Lock the flagged operation takes (mode, duration, what it blocks). Attached
+    # by the engine from the rule id; None for rules whose concern isn't a lock.
+    lock_impact: LockImpact | None = None
 
     def to_dict(self) -> dict[str, object]:
         """JSON-friendly representation. StrEnum serializes naturally to its value."""
         d = asdict(self)
         d["severity"] = self.severity.value
+        if self.lock_impact is None:
+            d.pop("lock_impact", None)
+        else:
+            d["lock_impact"] = self.lock_impact.to_dict()
         return d

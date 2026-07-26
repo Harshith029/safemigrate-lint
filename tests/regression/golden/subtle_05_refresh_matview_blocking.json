@@ -7,6 +7,12 @@
     "column": 0,
     "message": "REFRESH MATERIALIZED VIEW sales_daily without CONCURRENTLY blocks all reads of the view until the refresh finishes.",
     "help": "A plain REFRESH takes AccessExclusiveLock on the matview, so every query against it waits for the entire rebuild. REFRESH ... CONCURRENTLY rebuilds it without blocking readers. It requires a UNIQUE index on the matview and cannot run inside a transaction block. If a brief read stall is acceptable (e.g. an off-hours batch refresh), suppress with `-- safemigrate:ignore=refresh-matview-blocks-reads reason=\"...\"`.",
-    "suggested_fix": "REFRESH MATERIALIZED VIEW CONCURRENTLY sales_daily;"
+    "suggested_fix": "REFRESH MATERIALIZED VIEW CONCURRENTLY sales_daily;",
+    "lock_impact": {
+      "lock": "ACCESS EXCLUSIVE",
+      "held": "for the whole refresh",
+      "blocks": "reads of the view",
+      "note": "safe path: REFRESH ... CONCURRENTLY \u2014 needs a UNIQUE index on the matview, and can't run inside a transaction block"
+    }
   }
 ]

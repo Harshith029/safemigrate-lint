@@ -1,8 +1,8 @@
 """Output reporters.
 
 JSON is the v1 default — structured for CI integration and easy diffing against
-squawk's `--reporter=json`. Markdown is used by the GitHub Action wrapper (week
-4 work) to render PR comments.
+squawk's `--reporter=json`. Markdown is used by the GitHub Action wrapper to
+render PR comments.
 """
 
 from __future__ import annotations
@@ -21,6 +21,19 @@ _SEVERITY_BADGE = {
     Severity.CRITICAL: ":red_circle: CRITICAL",
     Severity.WARNING: ":yellow_circle: WARNING",
     Severity.STYLE: ":large_blue_circle: STYLE",
+}
+# Postgres lock modes in strength order (weakest -> strongest), per the
+# lock-conflict table in the Postgres docs. Used to pick the migration's worst
+# lock; an unknown mode sorts below all of them.
+_LOCK_RANK = {
+    "ACCESS SHARE": 1,
+    "ROW SHARE": 2,
+    "ROW EXCLUSIVE": 3,
+    "SHARE UPDATE EXCLUSIVE": 4,
+    "SHARE": 5,
+    "SHARE ROW EXCLUSIVE": 6,
+    "EXCLUSIVE": 7,
+    "ACCESS EXCLUSIVE": 8,
 }
 
 
@@ -60,6 +73,11 @@ def render_markdown(findings: Iterable[Finding], source_by_file: dict[str, str])
     lines.append("")
     lines.append(f"**{len(findings_list)} findings** — {summary}.")
     lines.append("")
+    impacts = [f.lock_impact for f in findings_list if f.lock_impact is not None]
+    if impacts:
+        heaviest = max(impacts, key=lambda i: _LOCK_RANK.get(i.lock, 0))
+        lines.append(f":lock: Heaviest lock: **{heaviest.lock}** — blocks {heaviest.blocks}.")
+        lines.append("")
     lines.append("---")
     lines.append("")
 
@@ -73,6 +91,12 @@ def render_markdown(findings: Iterable[Finding], source_by_file: dict[str, str])
         lines.append("")
         lines.append(f"> {f.message}")
         lines.append("")
+        if f.lock_impact:
+            li = f.lock_impact
+            lines.append(f":lock: Lock: **{li.lock}** | held: {li.held} | blocks: {li.blocks}")
+            if li.note:
+                lines.append(f"_{li.note}_")
+            lines.append("")
         # Code line from source, if available
         code_line = _extract_line(source_by_file.get(f.file, ""), f.line)
         if code_line:
