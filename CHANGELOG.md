@@ -3,6 +3,37 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-07-26
+
+### Added
+
+- **Lock impact on findings.** Each finding whose concern is a lock now carries a
+  `lock_impact` object: the lock mode the operation acquires, how long it's held,
+  what it blocks, and an optional note naming the safe alternative. Derived
+  statically from the Postgres documentation — no database connection involved.
+  25 of the 39 rules carry one.
+- JSON output gains an optional `lock_impact` key. The field is **omitted** (not
+  `null`) on findings without one, so existing consumers that read the documented
+  keys are unaffected.
+- Markdown output gains a per-finding lock line and a "Heaviest lock" summary at
+  the top of the report, so a reviewer sees the migration's worst lock without
+  reading every finding.
+
+The other 14 rules are left unannotated on purpose, not as a gap: style and
+type-choice rules, correctness rules (duplicate index columns, enum value
+ordering), dynamic SQL (unknowable by definition), rules that take no table lock
+(`DROP DATABASE`, transaction nesting, uncommitted transaction), and
+`index-concurrent-in-transaction-banned` — Postgres rejects that statement before
+it acquires anything.
+
+### Internal
+
+- `core/lock_impact.py` holds the rule-id → lock table, with tests pinning that
+  every entry names a registered rule and a real Postgres lock mode — a typo or a
+  renamed rule now fails CI instead of silently mis-ranking a lock.
+- Reporter lock ranking uses the full Postgres lock-strength ordering.
+- Test suite grew from 69 to 130 tests.
+
 ## [1.1.3] — 2026-06-05
 
 ### Fixed
@@ -97,6 +128,7 @@ Where safemigrate-lint adds coverage Atlas Pro paywalls or squawk doesn't ship:
 - JSON: sorted findings array with `rule_id`, `severity`, `file`, `line`, `column`, `message`, `help`, `suggested_fix`
 - Markdown: severity-grouped sections with code excerpts, help text, and suggested-fix blocks
 
+[1.2.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.2.0
 [1.1.3]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.3
 [1.1.2]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.2
 [1.1.1]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.1
