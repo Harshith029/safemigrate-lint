@@ -60,10 +60,18 @@ packages = ["src/safemigrate_lint"]
 
 [tool.hatch.build.targets.sdist]
 # Keep launch/marketing drafts and the demo image (referenced by absolute URL)
-# out of the published source distribution.
+# out of the published source distribution. .dockerignore is repo-local tooling
+# with no meaning to an sdist consumer — the Action image builds from the git
+# checkout (action.yml `image: Dockerfile`), never from the sdist.
+#
+# .gitignore cannot be excluded here: hatchling force-includes VCS exclusion
+# files so the sdist reproduces the same file selection, and force_include
+# overrides exclude. Turning that off (ignore-vcs) would mean re-listing every
+# ignored path by hand — a worse trade than shipping the file.
 exclude = [
     "/marketing",
     "/docs/demo.png",
+    "/.dockerignore",
 ]
 
 [dependency-groups]
