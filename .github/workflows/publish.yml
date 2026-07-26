@@ -1,0 +1,84 @@
+name: Publish
+
+# Publishes to PyPI when a version tag is pushed, using PyPI Trusted Publishing
+# (OIDC). No API token is stored anywhere — GitHub mints a short-lived token for
+# this repo + workflow, and PyPI verifies it. Nothing to leak or rotate.
+#
+# One-time setup on PyPI (pypi.org -> safemigrate-lint -> Manage -> Publishing):
+#   Owner: Harshith029 | Repository: safemigrate-lint
+#   Workflow: publish.yml | Environment: pypi
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.11.16"
+          enable-cache: true
+
+      # Guards the failure mode this repo has already hit twice: a tag landing on
+      # a commit whose packaged version doesn't match it (v1.1.3 was tagged before
+      # the uv.lock sync, and __version__ sat at 1.0.0 for four releases).
+      - name: Verify the tag matches the packaged version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match pyproject version ${pkg}"
+            exit 1
+          fi
+          echo "tag ${GITHUB_REF_NAME} matches pyproject version ${pkg}"
+
+      - name: Run the test suite
+        run: |
+          uv sync --frozen
+          uv run pytest -q
+
+      - name: Build sdist + wheel
+        run: uv build
+
+      - name: Check artifact metadata renders on PyPI
+        run: uvx twine check dist/*
+
+      - name: Upload artifacts for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    # Add a required reviewer to this environment in repo settings to gate the
+    # upload behind manual approval — a PyPI version number can never be reused.
+    environment: pypi
+    permissions:
+      id-token: write # mint the OIDC token trusted publishing exchanges
+    steps:
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.11.16"
+
+      - name: Publish to PyPI
+        run: uv publish
