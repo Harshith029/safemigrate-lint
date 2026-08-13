@@ -50,10 +50,16 @@ def analyze(result: ParseResult, state: MigrationState) -> list[Finding]:
             if rule.id in stmt_suppressions:
                 continue
             for finding in rule.check(inner, state, ctx):
-                # Attach the rule's lock impact (mode/duration/what it blocks),
-                # if any, so reporters and JSON consumers get it for free.
-                impact = lock_impact_for(finding.rule_id)
-                findings.append(replace(finding, lock_impact=impact) if impact else finding)
+                # Fill in the rule's default lock impact (mode/duration/what it
+                # blocks) so reporters and JSON consumers get it for free. A rule
+                # whose lock depends on the statement — ADD FOREIGN KEY takes
+                # SHARE ROW EXCLUSIVE where ADD CHECK takes ACCESS EXCLUSIVE —
+                # sets it on the Finding itself, and that always wins.
+                if finding.lock_impact is None:
+                    impact = lock_impact_for(finding.rule_id)
+                    if impact:
+                        finding = replace(finding, lock_impact=impact)
+                findings.append(finding)
 
     return findings
 

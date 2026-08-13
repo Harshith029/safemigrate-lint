@@ -25,6 +25,7 @@ from pglast.enums import AlterTableType, ConstrType
 
 from ..core.ast_utils import table_name
 from ..core.finding import Finding, Severity
+from ..core.lock_impact import ADD_CHECK_LOCK, ADD_FOREIGN_KEY_LOCK
 from ..core.state import MigrationState, table_created_in_migration
 from ._registry import RuleContext, register_rule
 
@@ -66,8 +67,12 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         if constraint.skip_validation:
             continue  # NOT VALID is present — rule satisfied
 
-        kind_label = "CHECK" if constraint.contype == ConstrType.CONSTR_CHECK else "FOREIGN KEY"
+        is_check = constraint.contype == ConstrType.CONSTR_CHECK
+        kind_label = "CHECK" if is_check else "FOREIGN KEY"
         constraint_name = constraint.conname or "<unnamed>"
+        # The two constraint types take different locks, so the impact is set
+        # per finding rather than once for the whole rule.
+        lock = ADD_CHECK_LOCK if is_check else ADD_FOREIGN_KEY_LOCK
         yield Finding(
             rule_id=RULE_ID,
             severity=Severity.WARNING,
@@ -80,8 +85,8 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             ),
             help=(
                 f"Postgres validates the {kind_label} against every existing row, holding "
-                f"AccessExclusiveLock for the entire scan. On a large pre-existing table "
-                f"this blocks reads and writes for minutes. The two-step pattern is "
+                f"{lock.lock} for the entire scan — that blocks {lock.blocks}. On a large "
+                f"pre-existing table the scan runs for minutes. The two-step pattern is "
                 f"non-blocking: add the constraint with NOT VALID (catalog-only, "
                 f"~millisecond lock), then VALIDATE CONSTRAINT in a separate migration "
                 f"which uses ShareUpdateExclusiveLock (doesn't block reads or writes)."
@@ -93,6 +98,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 f"-- Then in a separate migration:\n"
                 f"ALTER TABLE {table} VALIDATE CONSTRAINT {constraint_name};"
             ),
+            lock_impact=lock,
         )
 
 

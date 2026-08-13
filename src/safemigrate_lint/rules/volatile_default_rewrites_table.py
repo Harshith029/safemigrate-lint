@@ -5,10 +5,19 @@ Postgres 11+ added a fast-path optimization for ADD COLUMN with a constant
 existing rows lazily on read. This makes the operation O(1) regardless of
 table size.
 
-VOLATILE defaults (now(), random(), gen_random_uuid(), nextval(), etc.) do
-NOT qualify for the fast path. Postgres must evaluate the function for every
+VOLATILE defaults (random(), gen_random_uuid(), nextval(), etc.) do NOT
+qualify for the fast path. Postgres must evaluate the function for every
 existing row and write the result, requiring a full table rewrite under
 AccessExclusiveLock.
+
+The current-time family — now(), current_timestamp, transaction_timestamp(),
+localtimestamp — is *not* in that set. Those are STABLE, not VOLATILE: they
+return one value for the whole transaction, so the fast path applies and the
+ALTER is metadata-only. The Postgres ALTER TABLE docs use `DEFAULT now()` as
+the worked example of a non-rewriting default. Flagging it was a false
+positive on one of the most common migrations there is, so the current-time
+family is deliberately excluded. clock_timestamp() and timeofday() stay:
+those advance within a transaction and really are VOLATILE.
 
 We detect volatile defaults by matching the function name against a known
 list of common volatile functions. False negatives possible on custom
@@ -34,8 +43,12 @@ RULE_ID = "volatile-default-rewrites-table"
 # Postgres built-in functions marked VOLATILE in pg_proc that are commonly
 # used as column DEFAULTs. Lowercased for case-insensitive matching.
 # Source: Postgres documentation — Function Volatility Categories.
+#
+# Deliberately absent: now, current_timestamp, transaction_timestamp,
+# localtimestamp, statement_timestamp. Those are STABLE — fixed for the whole
+# transaction — so ADD COLUMN ... DEFAULT now() takes the PG11 fast path and
+# does not rewrite. See STABLE_CURRENT_TIME_FUNCTIONS below.
 KNOWN_VOLATILE_FUNCTIONS: frozenset[str] = frozenset({
-    "now",
     "random",
     "gen_random_uuid",
     "clock_timestamp",
@@ -48,6 +61,22 @@ KNOWN_VOLATILE_FUNCTIONS: frozenset[str] = frozenset({
     "uuid_generate_v5",
     "txid_current",
     "pg_backend_pid",
+})
+
+# STABLE current-time functions: one value per transaction, so ADD COLUMN with
+# one of these as DEFAULT takes the PG11 metadata-only fast path. Listed
+# explicitly (rather than merely omitted) so a future edit can't quietly move
+# one into the volatile set — `test_stable_time_functions_are_not_volatile`
+# fails if the two sets ever overlap.
+STABLE_CURRENT_TIME_FUNCTIONS: frozenset[str] = frozenset({
+    "now",
+    "current_timestamp",
+    "current_date",
+    "current_time",
+    "localtimestamp",
+    "localtime",
+    "transaction_timestamp",
+    "statement_timestamp",
 })
 
 

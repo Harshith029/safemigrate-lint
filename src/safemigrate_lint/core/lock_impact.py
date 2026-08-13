@@ -33,6 +33,26 @@ class LockImpact:
         return d
 
 
+_VALIDATE_TWO_STEP = (
+    "safe path: ADD ... NOT VALID (instant), then VALIDATE CONSTRAINT "
+    "(ShareUpdateExclusive — non-blocking)"
+)
+
+# Statement-dependent impacts. `constraint-not-valid-required` covers two
+# constraint types whose locks genuinely differ, so it has no rule-level entry
+# below — the rule picks one of these per finding and the engine leaves it
+# alone. Postgres docs: adding a FOREIGN KEY takes SHARE ROW EXCLUSIVE on both
+# the referencing and referenced table, *not* ACCESS EXCLUSIVE; adding a CHECK
+# takes ACCESS EXCLUSIVE like most other ALTER TABLE forms.
+ADD_FOREIGN_KEY_LOCK = LockImpact(
+    "SHARE ROW EXCLUSIVE",
+    "table scan to validate",
+    "writes on both the referencing and referenced table (reads still OK)",
+    _VALIDATE_TWO_STEP,
+)
+ADD_CHECK_LOCK = LockImpact(_AE, "table scan to validate", "reads + writes", _VALIDATE_TWO_STEP)
+
+
 # rule_id -> LockImpact. Rules absent here have no single table lock to report:
 # style and type-choice rules; correctness rules (duplicate index columns, enum
 # value ordering); dynamic SQL, which is unknowable by definition; DROP DATABASE
@@ -57,10 +77,6 @@ LOCK_IMPACT: dict[str, LockImpact] = {
     "identity-column-add-rewrites": LockImpact(_AE, "full table rewrite", "reads + writes"),
     "table-logging-mode-rewrites": LockImpact(_AE, "full table rewrite", "reads + writes"),
     # --- validation / index-build scans: heavy lock held for a full scan ---
-    "constraint-not-valid-required": LockImpact(
-        _AE, "table scan to validate", "reads + writes",
-        "safe path: ADD ... NOT VALID (instant), then VALIDATE CONSTRAINT (ShareUpdateExclusive — non-blocking)",
-    ),
     "nullable-to-non-nullable-may-fail": LockImpact(
         _AE, "table scan to verify no NULLs", "reads + writes",
         "PG12+: add a CHECK (col IS NOT NULL) NOT VALID, validate it, then SET NOT NULL",
