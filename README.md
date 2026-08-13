@@ -38,9 +38,10 @@ the real risk is irreversible data loss, not the lock
 ### 🟡 WARNING — constraint-not-valid-required
 migrations/0042_cleanup.sql:8
 ADD CONSTRAINT orders_user_fk FOREIGN KEY without NOT VALID requires a full
-table scan, holding AccessExclusiveLock for the duration.
+table scan.
 
-🔒 Lock: ACCESS EXCLUSIVE | held: table scan to validate | blocks: reads + writes
+🔒 Lock: SHARE ROW EXCLUSIVE | held: table scan to validate | blocks: writes on
+both the referencing and referenced table (reads still OK)
 safe path: ADD ... NOT VALID (instant), then VALIDATE CONSTRAINT
 (ShareUpdateExclusive — non-blocking)
 
@@ -158,7 +159,7 @@ Catch dangerous migrations before they're even committed:
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/Harshith029/safemigrate-lint
-    rev: v1.2.0
+    rev: v1.2.1
     hooks:
       - id: safemigrate-lint
 ```
@@ -201,13 +202,18 @@ statically from the Postgres documentation; **no database connection is involved
   "rule_id": "constraint-not-valid-required",
   "severity": "warning",
   "lock_impact": {
-    "lock": "ACCESS EXCLUSIVE",
+    "lock": "SHARE ROW EXCLUSIVE",
     "held": "table scan to validate",
-    "blocks": "reads + writes",
+    "blocks": "writes on both the referencing and referenced table (reads still OK)",
     "note": "safe path: ADD ... NOT VALID (instant), then VALIDATE CONSTRAINT (ShareUpdateExclusive — non-blocking)"
   }
 }
 ```
+
+The lock can depend on the statement, not just the rule. This same rule reports
+`ACCESS EXCLUSIVE` for `ADD CONSTRAINT ... CHECK`, because Postgres takes
+SHARE ROW EXCLUSIVE for a foreign key (on both tables) and ACCESS EXCLUSIVE for
+a check constraint.
 
 The markdown report adds a per-finding lock line plus a "Heaviest lock" summary at
 the top, so a reviewer can see the worst lock in the migration without reading

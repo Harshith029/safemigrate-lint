@@ -3,6 +3,61 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] — 2026-08-13
+
+Correctness fixes from an external audit. Each was reproduced against the code
+before being changed.
+
+### Fixed
+
+- **`DEFAULT now()` no longer flagged as a table rewrite.** `now()` is STABLE,
+  not VOLATILE — it returns one value per transaction, so
+  `ADD COLUMN ... DEFAULT now()` takes the PG11 metadata-only fast path and does
+  not rewrite. The Postgres ALTER TABLE docs use it as the worked example of a
+  default that doesn't rewrite. This was a CRITICAL false positive on one of the
+  most common migrations there is. `clock_timestamp()`, `random()`,
+  `gen_random_uuid()` and friends still fire — those really do advance per row.
+- **Foreign-key lock impact corrected.** Adding a `FOREIGN KEY` takes
+  `SHARE ROW EXCLUSIVE` on both the referencing and referenced table, not
+  `ACCESS EXCLUSIVE`. Lock impact was keyed by rule id, so one rule covering both
+  FK and CHECK had to be wrong for one of them — and it was wrong for FK, the
+  more common case, overstating the lock and omitting the referenced table.
+  Findings now carry their own impact where the lock depends on the statement.
+- **Markdown injection in the PR comment.** Identifiers and literals reached the
+  comment as raw Markdown, letting a contributor render arbitrary headings and
+  links in a comment posted under the repo bot's identity. Prose is now escaped
+  and flattened to one line; fenced blocks use a fence longer than any backtick
+  run in their content. Underscores are intentionally not escaped — intraword
+  underscores don't start emphasis, and escaping them would mangle every SQL
+  identifier.
+
+### Internal
+
+- `tests/unit/test_audit_regressions.py` approaches the rules from the opposite
+  side to the existing suites: cases where the tool must **not** fire, and
+  hazards that must not be suppressed. The `now()` fix changed no golden file —
+  the corpus never exercised `DEFAULT now()`, which is exactly how the bug
+  survived 130 green tests.
+
+### Known issues
+
+Five confirmed bugs share one root cause and are pinned as `xfail(strict=True)`
+so they fail the suite the moment they are fixed. `StateBuilder` computes
+whole-file state before any statement is analyzed, so rules read "created
+anywhere in the file" as "created earlier, in this schema, and still empty" —
+three distinct claims, none proven. Consequences:
+
+- A `DROP INDEX` is suppressed by a `CREATE INDEX` of the same name **later** in
+  the file.
+- `CREATE TABLE audit.users` suppresses a hazard on an existing `public.users`.
+- A table created and then populated in the same file is still treated as empty.
+- `BEGIN; BEGIN; COMMIT;` reports uncommitted transactions; Postgres treats a
+  repeated `BEGIN` as a no-op warning.
+- `CREATE INDEX CONCURRENTLY` is flagged when a `BEGIN` appears anywhere in the
+  file, even after it.
+
+Fixing these needs ordered, schema-aware state and is the next piece of work.
+
 ## [1.2.0] — 2026-07-26
 
 ### Added
@@ -128,6 +183,7 @@ Where safemigrate-lint adds coverage Atlas Pro paywalls or squawk doesn't ship:
 - JSON: sorted findings array with `rule_id`, `severity`, `file`, `line`, `column`, `message`, `help`, `suggested_fix`
 - Markdown: severity-grouped sections with code excerpts, help text, and suggested-fix blocks
 
+[1.2.1]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.2.1
 [1.2.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.2.0
 [1.1.3]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.3
 [1.1.2]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.2
