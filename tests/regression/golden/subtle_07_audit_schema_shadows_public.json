@@ -1,0 +1,18 @@
+[
+  {
+    "rule_id": "add-non-nullable-without-default",
+    "severity": "critical",
+    "file": "subtle_07_audit_schema_shadows_public.sql",
+    "line": 13,
+    "column": 0,
+    "message": "ADD COLUMN onboarding_stage NOT NULL on public.users has no DEFAULT \u2014 will fail at migration time on any populated table.",
+    "help": "Postgres requires a value for every row in a NOT NULL column. Without DEFAULT, the ALTER TABLE fails at execution time on any table that has existing rows. Either add a DEFAULT (immutable constant \u2014 avoid volatile expressions like now() which trigger a table rewrite), or use the three-step expand-contract pattern: ADD COLUMN nullable, backfill in batches, then ALTER COLUMN SET NOT NULL.",
+    "suggested_fix": "-- Three-step pattern:\n-- 1. ALTER TABLE public.users ADD COLUMN onboarding_stage <type>;  -- nullable\n-- 2. Backfill in batches (separate migration).\n-- 3. ALTER TABLE public.users ALTER COLUMN onboarding_stage SET NOT NULL;\n-- OR add an immutable DEFAULT:\n-- ALTER TABLE public.users ADD COLUMN onboarding_stage <type> NOT NULL DEFAULT <const>;",
+    "lock_impact": {
+      "lock": "ACCESS EXCLUSIVE",
+      "held": "instant \u2014 the statement fails on a populated table",
+      "blocks": "reads + writes (briefly)",
+      "note": "the real risk is the migration erroring out, not the lock"
+    }
+  }
+]

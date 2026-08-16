@@ -1,0 +1,34 @@
+[
+  {
+    "rule_id": "add-non-nullable-without-default",
+    "severity": "critical",
+    "file": "subtle_09_created_then_populated_table.sql",
+    "line": 16,
+    "column": 0,
+    "message": "ADD COLUMN region NOT NULL on order_backfill has no DEFAULT \u2014 will fail at migration time on any populated table.",
+    "help": "Postgres requires a value for every row in a NOT NULL column. Without DEFAULT, the ALTER TABLE fails at execution time on any table that has existing rows. Either add a DEFAULT (immutable constant \u2014 avoid volatile expressions like now() which trigger a table rewrite), or use the three-step expand-contract pattern: ADD COLUMN nullable, backfill in batches, then ALTER COLUMN SET NOT NULL.",
+    "suggested_fix": "-- Three-step pattern:\n-- 1. ALTER TABLE order_backfill ADD COLUMN region <type>;  -- nullable\n-- 2. Backfill in batches (separate migration).\n-- 3. ALTER TABLE order_backfill ALTER COLUMN region SET NOT NULL;\n-- OR add an immutable DEFAULT:\n-- ALTER TABLE order_backfill ADD COLUMN region <type> NOT NULL DEFAULT <const>;",
+    "lock_impact": {
+      "lock": "ACCESS EXCLUSIVE",
+      "held": "instant \u2014 the statement fails on a populated table",
+      "blocks": "reads + writes (briefly)",
+      "note": "the real risk is the migration erroring out, not the lock"
+    }
+  },
+  {
+    "rule_id": "constraint-not-valid-required",
+    "severity": "warning",
+    "file": "subtle_09_created_then_populated_table.sql",
+    "line": 18,
+    "column": 0,
+    "message": "ADD CONSTRAINT order_backfill_order_fk FOREIGN KEY on order_backfill without NOT VALID requires a full table scan.",
+    "help": "Postgres validates the FOREIGN KEY against every existing row, holding SHARE ROW EXCLUSIVE for the entire scan \u2014 that blocks writes on both the referencing and referenced table (reads still OK). On a large pre-existing table the scan runs for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE order_backfill ADD CONSTRAINT order_backfill_order_fk FOREIGN KEY (<columns>) REFERENCES <referenced_table> (<referenced_columns>) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE order_backfill VALIDATE CONSTRAINT order_backfill_order_fk;",
+    "lock_impact": {
+      "lock": "SHARE ROW EXCLUSIVE",
+      "held": "table scan to validate",
+      "blocks": "writes on both the referencing and referenced table (reads still OK)",
+      "note": "safe path: ADD ... NOT VALID (instant), then VALIDATE CONSTRAINT (ShareUpdateExclusive \u2014 non-blocking)"
+    }
+  }
+]
