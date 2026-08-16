@@ -64,7 +64,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         ),
         suggested_fix=(
             f"CREATE INDEX CONCURRENTLY {idx_name if idx_name != '<unnamed>' else 'idx_name'} "
-            f"ON {target or 'table'} (...);"
+            f"ON {target or 'table'} (<columns>);"
         ),
     )
 

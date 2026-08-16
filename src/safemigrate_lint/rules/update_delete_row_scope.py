@@ -68,21 +68,32 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             f"bounds the rows tightly (e.g. WHERE id = constant), suppress with "
             f"`-- safemigrate:ignore=update-delete-row-scope reason=\"bounded by PK\"`."
         ),
-        suggested_fix=(
-            f"-- Batched pattern for large {op}s:\n"
-            f"DO $$\n"
-            f"DECLARE batch_rows INT;\n"
-            f"BEGIN\n"
-            f"  LOOP\n"
-            f"    WITH chunk AS (\n"
-            f"      SELECT ctid FROM {table or 'table'} WHERE <condition> LIMIT 10000\n"
-            f"    )\n"
-            f"    {op} FROM {table or 'table'} WHERE ctid IN (SELECT ctid FROM chunk);\n"
-            f"    GET DIAGNOSTICS batch_rows = ROW_COUNT;\n"
-            f"    EXIT WHEN batch_rows = 0;\n"
-            f"  END LOOP;\n"
-            f"END $$;"
-        ),
+        suggested_fix=_batched_fix(op, table or "<table>"),
+    )
+
+
+def _batched_fix(op: str, table: str) -> str:
+    """One chunk of a batched mutation, to be driven by the caller.
+
+    Deliberately not a DO block. A DO block runs inside a single transaction, so
+    looping in one wouldn't shorten the transaction, wouldn't release row locks
+    between chunks, and wouldn't stop the WAL burst — it would leave every
+    problem this rule warns about in place while looking like a fix.
+
+    Angle-bracketed parts are placeholders for the author to fill in.
+    """
+    mutation = (
+        f"UPDATE {table} SET <assignments>" if op == "UPDATE" else f"DELETE FROM {table}"
+    )
+    return (
+        f"-- Run this one chunk at a time from your migration runner or a script,\n"
+        f"-- committing after each, until it reports 0 rows. Batching only helps if\n"
+        f"-- each chunk is its own transaction — a DO $$ ... $$ loop is still one\n"
+        f"-- transaction and relieves none of the lock or replication pressure.\n"
+        f"{mutation}\n"
+        f"WHERE ctid IN (\n"
+        f"  SELECT ctid FROM {table} WHERE <condition> LIMIT 10000\n"
+        f");"
     )
 
 

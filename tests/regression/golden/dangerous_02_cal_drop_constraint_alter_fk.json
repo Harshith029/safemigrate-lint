@@ -119,7 +119,7 @@
     "column": 0,
     "message": "ADD CONSTRAINT EventType_userId_fkey FOREIGN KEY on EventType without NOT VALID requires a full table scan.",
     "help": "Postgres validates the FOREIGN KEY against every existing row, holding SHARE ROW EXCLUSIVE for the entire scan \u2014 that blocks writes on both the referencing and referenced table (reads still OK). On a large pre-existing table the scan runs for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
-    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE EventType ADD CONSTRAINT EventType_userId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE EventType VALIDATE CONSTRAINT EventType_userId_fkey;",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE EventType ADD CONSTRAINT EventType_userId_fkey FOREIGN KEY (<columns>) REFERENCES <referenced_table> (<referenced_columns>) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE EventType VALIDATE CONSTRAINT EventType_userId_fkey;",
     "lock_impact": {
       "lock": "SHARE ROW EXCLUSIVE",
       "held": "table scan to validate",
@@ -135,7 +135,7 @@
     "column": 0,
     "message": "ADD CONSTRAINT EventType_teamId_fkey FOREIGN KEY on EventType without NOT VALID requires a full table scan.",
     "help": "Postgres validates the FOREIGN KEY against every existing row, holding SHARE ROW EXCLUSIVE for the entire scan \u2014 that blocks writes on both the referencing and referenced table (reads still OK). On a large pre-existing table the scan runs for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
-    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE EventType ADD CONSTRAINT EventType_teamId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE EventType VALIDATE CONSTRAINT EventType_teamId_fkey;",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE EventType ADD CONSTRAINT EventType_teamId_fkey FOREIGN KEY (<columns>) REFERENCES <referenced_table> (<referenced_columns>) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE EventType VALIDATE CONSTRAINT EventType_teamId_fkey;",
     "lock_impact": {
       "lock": "SHARE ROW EXCLUSIVE",
       "held": "table scan to validate",
@@ -151,7 +151,7 @@
     "column": 0,
     "message": "ADD CONSTRAINT DestinationCalendar_eventTypeId_fkey FOREIGN KEY on DestinationCalendar without NOT VALID requires a full table scan.",
     "help": "Postgres validates the FOREIGN KEY against every existing row, holding SHARE ROW EXCLUSIVE for the entire scan \u2014 that blocks writes on both the referencing and referenced table (reads still OK). On a large pre-existing table the scan runs for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
-    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE DestinationCalendar ADD CONSTRAINT DestinationCalendar_eventTypeId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE DestinationCalendar VALIDATE CONSTRAINT DestinationCalendar_eventTypeId_fkey;",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE DestinationCalendar ADD CONSTRAINT DestinationCalendar_eventTypeId_fkey FOREIGN KEY (<columns>) REFERENCES <referenced_table> (<referenced_columns>) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE DestinationCalendar VALIDATE CONSTRAINT DestinationCalendar_eventTypeId_fkey;",
     "lock_impact": {
       "lock": "SHARE ROW EXCLUSIVE",
       "held": "table scan to validate",
@@ -167,7 +167,7 @@
     "column": 0,
     "message": "ADD CONSTRAINT DestinationCalendar_userId_fkey FOREIGN KEY on DestinationCalendar without NOT VALID requires a full table scan.",
     "help": "Postgres validates the FOREIGN KEY against every existing row, holding SHARE ROW EXCLUSIVE for the entire scan \u2014 that blocks writes on both the referencing and referenced table (reads still OK). On a large pre-existing table the scan runs for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
-    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE DestinationCalendar ADD CONSTRAINT DestinationCalendar_userId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE DestinationCalendar VALIDATE CONSTRAINT DestinationCalendar_userId_fkey;",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE DestinationCalendar ADD CONSTRAINT DestinationCalendar_userId_fkey FOREIGN KEY (<columns>) REFERENCES <referenced_table> (<referenced_columns>) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE DestinationCalendar VALIDATE CONSTRAINT DestinationCalendar_userId_fkey;",
     "lock_impact": {
       "lock": "SHARE ROW EXCLUSIVE",
       "held": "table scan to validate",
@@ -183,7 +183,7 @@
     "column": 0,
     "message": "ADD CONSTRAINT DestinationCalendar_bookingId_fkey FOREIGN KEY on DestinationCalendar without NOT VALID requires a full table scan.",
     "help": "Postgres validates the FOREIGN KEY against every existing row, holding SHARE ROW EXCLUSIVE for the entire scan \u2014 that blocks writes on both the referencing and referenced table (reads still OK). On a large pre-existing table the scan runs for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
-    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE DestinationCalendar ADD CONSTRAINT DestinationCalendar_bookingId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE DestinationCalendar VALIDATE CONSTRAINT DestinationCalendar_bookingId_fkey;",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE DestinationCalendar ADD CONSTRAINT DestinationCalendar_bookingId_fkey FOREIGN KEY (<columns>) REFERENCES <referenced_table> (<referenced_columns>) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE DestinationCalendar VALIDATE CONSTRAINT DestinationCalendar_bookingId_fkey;",
     "lock_impact": {
       "lock": "SHARE ROW EXCLUSIVE",
       "held": "table scan to validate",
@@ -199,7 +199,7 @@
     "column": 0,
     "message": "ADD CONSTRAINT Membership_teamId_fkey FOREIGN KEY on Membership without NOT VALID requires a full table scan.",
     "help": "Postgres validates the FOREIGN KEY against every existing row, holding SHARE ROW EXCLUSIVE for the entire scan \u2014 that blocks writes on both the referencing and referenced table (reads still OK). On a large pre-existing table the scan runs for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
-    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE Membership ADD CONSTRAINT Membership_teamId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE Membership VALIDATE CONSTRAINT Membership_teamId_fkey;",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE Membership ADD CONSTRAINT Membership_teamId_fkey FOREIGN KEY (<columns>) REFERENCES <referenced_table> (<referenced_columns>) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE Membership VALIDATE CONSTRAINT Membership_teamId_fkey;",
     "lock_impact": {
       "lock": "SHARE ROW EXCLUSIVE",
       "held": "table scan to validate",
@@ -215,7 +215,7 @@
     "column": 0,
     "message": "ADD CONSTRAINT EventTypeCustomInput_eventTypeId_fkey FOREIGN KEY on EventTypeCustomInput without NOT VALID requires a full table scan.",
     "help": "Postgres validates the FOREIGN KEY against every existing row, holding SHARE ROW EXCLUSIVE for the entire scan \u2014 that blocks writes on both the referencing and referenced table (reads still OK). On a large pre-existing table the scan runs for minutes. The two-step pattern is non-blocking: add the constraint with NOT VALID (catalog-only, ~millisecond lock), then VALIDATE CONSTRAINT in a separate migration which uses ShareUpdateExclusiveLock (doesn't block reads or writes).",
-    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE EventTypeCustomInput ADD CONSTRAINT EventTypeCustomInput_eventTypeId_fkey FOREIGN KEY (...) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE EventTypeCustomInput VALIDATE CONSTRAINT EventTypeCustomInput_eventTypeId_fkey;",
+    "suggested_fix": "-- Two-step pattern (non-blocking):\nALTER TABLE EventTypeCustomInput ADD CONSTRAINT EventTypeCustomInput_eventTypeId_fkey FOREIGN KEY (<columns>) REFERENCES <referenced_table> (<referenced_columns>) NOT VALID;\n-- Then in a separate migration:\nALTER TABLE EventTypeCustomInput VALIDATE CONSTRAINT EventTypeCustomInput_eventTypeId_fkey;",
     "lock_impact": {
       "lock": "SHARE ROW EXCLUSIVE",
       "held": "table scan to validate",

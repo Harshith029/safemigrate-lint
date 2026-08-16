@@ -189,9 +189,22 @@ def _pr_context() -> dict | None:
     }
 
 
+def _is_bot_authored(comment: dict) -> bool:
+    """Was this comment written by a GitHub App / Actions bot, not a person?
+
+    The marker is just text at the top of a comment body, so anyone able to
+    comment on the PR can post one. Without this check the action would adopt
+    that comment as its own and try to PATCH it — which fails, because the
+    token can't edit another account's comment, and the real report never gets
+    posted. A `user.type` of `Bot` can't be forged by a PR author.
+    """
+    user = comment.get("user")
+    return isinstance(user, dict) and user.get("type") == "Bot"
+
+
 def _find_existing_comment(ctx: dict) -> int | None:
-    """Walk pages of the PR's comments looking for one whose body begins with
-    COMMENT_MARKER. Returns the comment id, or None if not found / on error."""
+    """Walk pages of the PR's comments looking for a bot-authored one whose body
+    begins with COMMENT_MARKER. Returns the comment id, or None if not found."""
     page = 1
     while True:
         url = (
@@ -207,18 +220,50 @@ def _find_existing_comment(ctx: dict) -> int | None:
             return None
         for c in comments:
             body = c.get("body", "") or ""
-            if body.startswith(COMMENT_MARKER):
+            if body.startswith(COMMENT_MARKER) and _is_bot_authored(c):
                 return int(c["id"])
         if len(comments) < 100:
             return None
         page += 1
 
 
+# GitHub rejects an issue comment body over 65536 characters. A migration set
+# with enough findings blows past that, and the API call fails outright — so a
+# big, important report is exactly the one that goes missing. Truncate instead,
+# keeping the most severe findings, which the reporter already sorts first.
+_MAX_COMMENT_CHARS = 65536
+_TRUNCATION_NOTE = (
+    "\n\n---\n\n_Report truncated to fit GitHub's comment size limit. "
+    "The full findings are in the action log._\n"
+)
+
+
+_FENCE_CLOSE = "\n```"
+
+
+def _cap_comment(body: str) -> str:
+    if len(body) <= _MAX_COMMENT_CHARS:
+        return body
+    # Reserve room for the note *and* a closing fence unconditionally — adding
+    # the fence after budgeting only for the note pushed the result back over
+    # the limit, which is the failure this whole function exists to prevent.
+    budget = _MAX_COMMENT_CHARS - len(_TRUNCATION_NOTE) - len(_FENCE_CLOSE)
+    cut = body[:budget]
+    # Prefer to cut at a finding boundary so we don't end mid-sentence or, worse,
+    # inside a code fence — which would swallow the truncation note itself.
+    boundary = cut.rfind("\n---\n")
+    if boundary > budget // 2:
+        cut = cut[:boundary]
+    elif cut.count("```") % 2:
+        cut += _FENCE_CLOSE
+    return cut + _TRUNCATION_NOTE
+
+
 def _post_or_edit_comment(ctx: dict, body_md: str) -> None:
     """Find-or-create the marker-tagged comment on the PR. API failures are
     logged to stderr but do not change the action's exit code — the lint
     result stays the actionable signal even if commenting fails."""
-    body_with_marker = f"{COMMENT_MARKER}\n{body_md}"
+    body_with_marker = _cap_comment(f"{COMMENT_MARKER}\n{body_md}")
     existing = _find_existing_comment(ctx)
     if existing is not None:
         url = (
@@ -230,12 +275,14 @@ def _post_or_edit_comment(ctx: dict, body_md: str) -> None:
         )
         if status in (200, 201):
             print(f"[comment] edited existing comment #{existing}", file=sys.stderr)
-        else:
-            _err(
-                f"GitHub API returned {status} editing comment "
-                f"#{existing}: {raw[:200]}"
-            )
-        return
+            return
+        # Don't give up: an edit can fail for reasons that don't stop us posting
+        # fresh (comment deleted, or authored by an account this token can't
+        # edit). Losing the report entirely is worse than a duplicate comment.
+        _err(
+            f"GitHub API returned {status} editing comment #{existing}: "
+            f"{raw[:200]} — posting a new comment instead"
+        )
 
     url = (
         f"https://api.github.com/repos/{ctx['owner']}/{ctx['repo']}"

@@ -1,12 +1,1 @@
-[
-  {
-    "rule_id": "timestamptz-over-timestamp-preferred",
-    "severity": "warning",
-    "file": "subtle_01_cal_init_fk_without_not_valid.sql",
-    "line": 26,
-    "column": 0,
-    "message": "Column users.created uses `timestamp` (without time zone). Use `timestamptz` instead to avoid silent DST and cross-region bugs.",
-    "help": "Postgres `timestamp` (without time zone) stores the literal wall-clock value with no timezone info. On read it's interpreted in the session's timezone, which differs across regions, OS configurations, and DST transitions \u2014 values silently shift on the boundary. `timestamptz` stores as UTC internally and converts on read; same 8-byte storage. Convert with: ALTER TABLE <t> ALTER COLUMN <c> TYPE timestamptz USING <c> AT TIME ZONE 'UTC' (note: this rewrites the table \u2014 use the expand-contract pattern on large tables).",
-    "suggested_fix": "-- Define new columns as timestamptz from the start:\ncreated timestamptz NOT NULL DEFAULT now()"
-  }
-]
+[]

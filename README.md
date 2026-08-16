@@ -6,7 +6,7 @@
 
 A GitHub Action that lints Postgres migration SQL on every PR. Catches the operations that actually break production — written for the real shape of production migrations, not the textbook one.
 
-- 33 safety rules + 6 opt-in style rules across CRITICAL / WARNING / STYLE tiers
+- 32 safety rules + 7 opt-in style rules across CRITICAL / WARNING / STYLE tiers
 - Real Postgres parser via [pglast](https://github.com/lelit/pglast) (libpg_query) — handles extension SQL (TimescaleDB, PostGIS) that other linters trip on
 - Cross-statement context — suppresses FK-to-new-table and similar false positives that pile up in single-statement linters, using ordered, schema-qualified state so a later statement can't excuse an earlier hazard
 - Lock impact on each finding — which lock the operation takes, how long it's held, and what it blocks
@@ -55,7 +55,9 @@ Suggested fix:
 
 ## Why
 
-We scanned ~700 production migrations from Cal.com, Mattermost, Supabase, Hasura, and TimescaleDB. **Zero** of them ran the textbook DANGEROUS operations the popular linters warn loudest on (raw `DROP TABLE` in app code, etc.). The real risks live one layer deeper: ADD COLUMN GENERATED triggering a table rewrite, ADD CONSTRAINT FK without `NOT VALID`, dynamic SQL the analyzer can't see, constraint drops that silently break invariants. safemigrate-lint is built around those.
+The rules were chosen by reading real migration history from Cal.com, Mattermost, Supabase, Hasura, and TimescaleDB, rather than from a list of textbook hazards. What stood out is that the operations popular linters warn loudest about — a raw `DROP TABLE` in application migrations, say — barely occur. The risks that do occur live one layer deeper: ADD COLUMN GENERATED triggering a table rewrite, ADD CONSTRAINT FK without `NOT VALID`, dynamic SQL the analyzer can't see, constraint drops that silently break invariants. safemigrate-lint is built around those.
+
+That reading informed the rule set; it isn't a published study, and this repo doesn't ship the full corpus or a script to reproduce it. What it does ship is [`fixtures/migrations/`](fixtures/migrations) — 23 real migrations from those projects, each with a committed golden output — so every claim about *this tool's* behavior is reproducible with `pytest`.
 
 Atlas Pro charges $9/dev + $59/CI + $39/db per month for many of these checks. This action ships them free, MIT.
 
@@ -235,6 +237,22 @@ briefly — `DROP COLUMN` is ACCESS EXCLUSIVE but catalog-only and instant — s
 note says the real risk is data loss or application breakage rather than implying
 an outage the operation won't cause.
 
+### Supported Postgres versions
+
+The grammar comes from libpg_query (via pglast), so it's Postgres's own parser
+rather than a reimplementation. But it's one **specific** version's parser:
+
+| | |
+| --- | --- |
+| Grammar version | **Postgres 17** |
+| Parses cleanly | anything valid in PG 17 and earlier, including extension SQL (TimescaleDB, PostGIS) |
+| Known gap | PG 18 syntax. `GENERATED ALWAYS AS (...) VIRTUAL` is reported as a syntax error |
+
+If you write PG 18-only syntax, the affected file reports a `syntax-error`
+finding rather than being silently skipped. The version is pinned by a test, so
+upgrading it is a deliberate change rather than a side effect of a dependency
+bump.
+
 ### Inline suppression
 
 For a one-off justified exception, prefix the statement with an ignore comment:
@@ -262,15 +280,15 @@ enabled = ["bigint-over-int-preferred"]                # promote STYLE -> WARNIN
 
 |                                          | safemigrate-lint                                | squawk                          |
 | ---------------------------------------- | ----------------------------------------------- | ------------------------------- |
-| Parser                                   | pglast (libpg_query — actual Postgres parser)   | Rust reimplementation           |
+| Parser                                   | pglast (libpg_query — Postgres's own parser, PG 17 grammar) | Rust reimplementation           |
 | Extension SQL (TimescaleDB / PostGIS)    | parses cleanly                                  | known parser gaps on newer SQL  |
-| Cross-statement context                  | yes — suppresses FK / index / constraint rules on same-migration tables | per-statement only |
+| Cross-statement context                  | yes — ordered, schema-qualified; suppresses FK / index / constraint rules only on tables created earlier and still empty | per-statement only |
 | Out-of-the-box GitHub Action             | yes (this repo)                                 | shipped binary + DIY workflow   |
 | PR comments + Check Run                  | built-in                                        | DIY                             |
-| Rule count                               | 33 safety + 6 opt-in style                      | 37 rules                        |
-| Default-mode signal on a 23-fixture corpus | 39 findings, all actionable                   | 205 findings                    |
+| Rule count                               | 32 safety + 7 opt-in style                      | 37 rules                        |
+| Default-mode signal on a 23-fixture corpus | 29 findings                                     | 205 findings                    |
 
-> Measured with squawk 2.56.0, both tools in their default configuration, on this repo's `fixtures/migrations/`. Most of squawk's extra findings are its style/opinion rules (`prefer-robust-stmts`, `prefer-bigint-over-int`, `prefer-identity`, …), which safemigrate-lint ships as opt-in STYLE rules rather than firing by default.
+> squawk's count was measured with squawk 2.56.0 in its default configuration on this repo's `fixtures/migrations/`; reproduce this tool's number with `safemigrate-lint fixtures/migrations/*.sql`. Most of squawk's extra findings are its style/opinion rules (`prefer-robust-stmts`, `prefer-bigint-over-int`, `prefer-identity`, …), which safemigrate-lint ships as opt-in STYLE rules rather than firing by default. A lower count is not automatically better — it reflects a deliberate choice about what belongs in a default-on gate, and squawk's broader catalog may suit you better.
 
 If you want the broadest rule catalog and you're comfortable wiring the action yourself, squawk is mature and well-maintained. If you want a one-paste install plus FK-to-new-table suppression by default, this is the trade.
 

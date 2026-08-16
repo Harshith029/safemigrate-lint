@@ -1,7 +1,15 @@
 """Parser wrapper around pglast (libpg_query).
 
-This is the load-bearing wedge: by using libpg_query directly, we cannot drift
-from Postgres syntax acceptance. Anything Postgres parses, we parse.
+Using libpg_query means the grammar is Postgres's own, not a reimplementation
+that drifts. But it is one *specific* Postgres version's grammar, not all of
+them: pglast vendors a fixed libpg_query, so syntax added in a newer Postgres
+than that one is a parse error here even though a real server accepts it.
+
+`POSTGRES_GRAMMAR_VERSION` reports the version in use, and
+`test_parser_version.py` pins it so an upgrade is a deliberate, visible change
+rather than something a dependency bump does silently. The README documents the
+boundary; the known gap today is PG18 virtual generated columns
+(`GENERATED ALWAYS AS (...) VIRTUAL`).
 
 On hard parse failure we emit a single syntax-error Finding and the engine
 short-circuits — no point running rules against a tree we couldn't build.
@@ -13,10 +21,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import pglast
 from pglast import parse_sql
 from pglast.parser import ParseError
 
 from .finding import Finding, Severity
+
+#: The Postgres grammar this build accepts, as (major, minor). Syntax newer than
+#: this parses as a syntax error even though a real server would accept it.
+POSTGRES_GRAMMAR_VERSION: tuple[int, ...] = tuple(pglast.get_postgresql_version())
 
 SYNTAX_ERROR_RULE_ID = "syntax-error"
 

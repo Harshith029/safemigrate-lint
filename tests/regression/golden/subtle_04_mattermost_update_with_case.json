@@ -7,7 +7,7 @@
     "column": 0,
     "message": "UPDATE on propertyfields \u2014 verify the WHERE clause is bounded; unbounded mass mutations cause replication lag and pool exhaustion.",
     "help": "Static analysis cannot prove a WHERE clause bounds the row count. If the UPDATE can match more than ~10K rows, batch the operation: identify the target rows by primary key in chunks (ORDER BY pk LIMIT N), then loop. Mass UPDATEs on big tables block replication for minutes, can exhaust the connection pool by piling app writes behind row locks, and produce huge WAL volume which lags replicas. If you have verified the WHERE clause bounds the rows tightly (e.g. WHERE id = constant), suppress with `-- safemigrate:ignore=update-delete-row-scope reason=\"bounded by PK\"`.",
-    "suggested_fix": "-- Batched pattern for large UPDATEs:\nDO $$\nDECLARE batch_rows INT;\nBEGIN\n  LOOP\n    WITH chunk AS (\n      SELECT ctid FROM propertyfields WHERE <condition> LIMIT 10000\n    )\n    UPDATE FROM propertyfields WHERE ctid IN (SELECT ctid FROM chunk);\n    GET DIAGNOSTICS batch_rows = ROW_COUNT;\n    EXIT WHEN batch_rows = 0;\n  END LOOP;\nEND $$;",
+    "suggested_fix": "-- Run this one chunk at a time from your migration runner or a script,\n-- committing after each, until it reports 0 rows. Batching only helps if\n-- each chunk is its own transaction \u2014 a DO $$ ... $$ loop is still one\n-- transaction and relieves none of the lock or replication pressure.\nUPDATE propertyfields SET <assignments>\nWHERE ctid IN (\n  SELECT ctid FROM propertyfields WHERE <condition> LIMIT 10000\n);",
     "lock_impact": {
       "lock": "ROW EXCLUSIVE",
       "held": "until the transaction commits",
@@ -23,7 +23,7 @@
     "column": 0,
     "message": "UPDATE on propertygroups \u2014 verify the WHERE clause is bounded; unbounded mass mutations cause replication lag and pool exhaustion.",
     "help": "Static analysis cannot prove a WHERE clause bounds the row count. If the UPDATE can match more than ~10K rows, batch the operation: identify the target rows by primary key in chunks (ORDER BY pk LIMIT N), then loop. Mass UPDATEs on big tables block replication for minutes, can exhaust the connection pool by piling app writes behind row locks, and produce huge WAL volume which lags replicas. If you have verified the WHERE clause bounds the rows tightly (e.g. WHERE id = constant), suppress with `-- safemigrate:ignore=update-delete-row-scope reason=\"bounded by PK\"`.",
-    "suggested_fix": "-- Batched pattern for large UPDATEs:\nDO $$\nDECLARE batch_rows INT;\nBEGIN\n  LOOP\n    WITH chunk AS (\n      SELECT ctid FROM propertygroups WHERE <condition> LIMIT 10000\n    )\n    UPDATE FROM propertygroups WHERE ctid IN (SELECT ctid FROM chunk);\n    GET DIAGNOSTICS batch_rows = ROW_COUNT;\n    EXIT WHEN batch_rows = 0;\n  END LOOP;\nEND $$;",
+    "suggested_fix": "-- Run this one chunk at a time from your migration runner or a script,\n-- committing after each, until it reports 0 rows. Batching only helps if\n-- each chunk is its own transaction \u2014 a DO $$ ... $$ loop is still one\n-- transaction and relieves none of the lock or replication pressure.\nUPDATE propertygroups SET <assignments>\nWHERE ctid IN (\n  SELECT ctid FROM propertygroups WHERE <condition> LIMIT 10000\n);",
     "lock_impact": {
       "lock": "ROW EXCLUSIVE",
       "held": "until the transaction commits",

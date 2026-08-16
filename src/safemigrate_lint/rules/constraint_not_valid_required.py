@@ -35,6 +35,18 @@ from ._registry import RuleContext, register_rule
 RULE_ID = "constraint-not-valid-required"
 
 
+def _clause(is_check: bool) -> str:
+    """The constraint clause for the suggested fix.
+
+    A FOREIGN KEY is only well-formed with its REFERENCES target, so the two
+    kinds can't share one template — emitting `FOREIGN KEY (cols) NOT VALID`
+    would hand the reader SQL that doesn't parse.
+    """
+    if is_check:
+        return "CHECK (<predicate>)"
+    return "FOREIGN KEY (<columns>) REFERENCES <referenced_table> (<referenced_columns>)"
+
+
 @register_rule(
     id=RULE_ID,
     severity=Severity.WARNING,
@@ -98,7 +110,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             suggested_fix=(
                 f"-- Two-step pattern (non-blocking):\n"
                 f"ALTER TABLE {table} ADD CONSTRAINT {constraint_name} "
-                f"{kind_label} (...) NOT VALID;\n"
+                f"{_clause(is_check)} NOT VALID;\n"
                 f"-- Then in a separate migration:\n"
                 f"ALTER TABLE {table} VALIDATE CONSTRAINT {constraint_name};"
             ),
