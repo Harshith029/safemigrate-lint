@@ -161,7 +161,7 @@ Catch dangerous migrations before they're even committed:
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/Harshith029/safemigrate-lint
-    rev: v1.2.1
+    rev: v1.3.0
     hooks:
       - id: safemigrate-lint
 ```

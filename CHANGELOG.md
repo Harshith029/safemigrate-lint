@@ -3,6 +3,107 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — 2026-08-16
+
+Completes the response to the external audit. **Default output changes** — see
+Changed below before upgrading a pipeline that gates on finding counts. Every
+finding was reproduced against the code before being acted on; two turned out to
+be overstated and are noted at the end.
+
+### Fixed
+
+- **Cross-statement suppression no longer hides real hazards.** `StateBuilder`
+  computed whole-file state before any statement was analyzed, so rules read
+  "created anywhere in this file" as "created earlier, in this schema, and still
+  empty" — three claims, none proven. The headline false-positive reducer was
+  producing false negatives, the worse failure for a tool that gates a merge.
+  State is now advanced statement by statement, so a rule sees only what
+  happened strictly before the statement it judges. Concretely:
+  - a `DROP INDEX` is no longer excused by a `CREATE INDEX` of the same name
+    **later** in the file;
+  - `CREATE TABLE audit.users` no longer vouches for an existing
+    `public.users` — relations are matched on schema-qualified identity, and an
+    unqualified name is left unresolved when the migration has claimed that bare
+    name in another schema;
+  - a table created and then populated in the same migration is no longer
+    treated as empty, and `CREATE TABLE AS` counts as populated on creation
+    (`WITH NO DATA` does not).
+- **Transaction semantics match Postgres.** A repeated `BEGIN` is a warning that
+  leaves the transaction alone, not a nested one. The old depth counter made the
+  following `COMMIT` look like it left a transaction open, and let a `BEGIN`
+  anywhere in the file condemn a `CREATE INDEX CONCURRENTLY` that ran before it.
+- **`timestamptz-over-timestamp-preferred` described the types backwards.**
+  `timestamp without time zone` returns the wall-clock fields it was given and
+  converts nothing; `timestamptz` is the type tied to the session timezone. The
+  real issue is ambiguity — the same reading denotes different moments in
+  different zones and repeats across a DST fall-back.
+- **Batched `UPDATE`/`DELETE` guidance was not executable and not sound.** It
+  emitted `UPDATE FROM t`, which is invalid in every Postgres version, inside a
+  `DO` block — which runs in a single transaction and so relieves none of the
+  lock or replication pressure the rule warns about. It now emits one chunk to
+  be driven by the caller, stating the transaction-boundary requirement.
+  `FOREIGN KEY` and `CHECK` also get correct, separate templates.
+- **CLI operational errors exit 2.** Malformed `.safemigrate.toml`, an
+  unreadable or non-UTF-8 file, and directory arguments raised tracebacks and
+  exited 1 — which the Action treats as "ran fine, found something", reporting
+  broken input as a clean lint. Unknown rule ids in config are now rejected
+  rather than silently doing nothing.
+- Style promotion (`[rules.style].enabled`) rebuilt findings field by field and
+  dropped `lock_impact`, added in 1.2.0.
+- **PR comment integrity.** The marker identifying the bot's own comment is
+  plain text, so anyone able to comment could post one; the Action would then
+  try to edit a comment its token doesn't own, and the report never appeared.
+  The author must now be a Bot, and a failed edit falls back to posting fresh.
+- Comments over GitHub's 65536-character limit were rejected outright, so the
+  largest reports were the ones that went missing. They are truncated at a
+  finding boundary instead, never leaving an open code fence.
+
+### Changed
+
+- `timestamptz-over-timestamp-preferred` returns to **opt-in STYLE**. Its
+  promotion to WARNING rested on the incorrect semantics above, and static
+  analysis cannot tell an instant from a civil time — `timestamp` is the right
+  type for a birthday or a 09:00 local appointment. This removes 11 findings
+  from the fixture corpus. Re-enable with `--severity=style` or:
+
+      [rules.style]
+      enabled = ["timestamptz-over-timestamp-preferred"]
+
+- Rule tiers are now 32 safety + 7 opt-in style (was 33 + 6).
+- The action image runs as a non-root user and pins its base by digest;
+  workflow actions are pinned by commit SHA.
+
+### Added
+
+- `POSTGRES_GRAMMAR_VERSION` and a documented supported-version matrix. pglast
+  vendors one libpg_query, so this accepts **Postgres 17** syntax — PG18 virtual
+  generated columns are a genuine gap, reported as a syntax error rather than
+  quietly mishandled. A test pins the major so a dependency bump can't move it.
+- CI builds the Docker action image and lints through the real entrypoint,
+  asserting non-root and both exit codes. Nothing previously built the artifact
+  users actually run.
+- `workflow_dispatch` on the publish workflow: a dry run that builds and checks
+  artifacts without uploading, and a way to re-drive a failed upload without
+  deleting and re-pushing a published tag.
+
+### Internal
+
+- Tests 130 → 212, across new CLI-error, Action-comment, suggested-fix,
+  parser-version, and state-semantics suites. The state suite pins both
+  directions: suppression that must keep working, and suppression that must not
+  apply. The `now()` fix in 1.2.1 changed no golden file — no fixture exercised
+  `DEFAULT now()`, which is how the bug survived 130 green tests.
+- Every `suggested_fix` is now parsed (after placeholder substitution) by a test.
+
+### Where the audit was wrong
+
+Recorded because both claims are plausible and would mislead a future reader.
+The `now()` finding was overstated: only `now()` ever fired, not the wider
+`current_timestamp` family. And the batched-`UPDATE` finding's evidence was
+incorrect — pglast does **not** reject the emitted SQL, because the statement
+sits inside an opaque `$$…$$` body. The SQL was still invalid; the stated
+reproduction didn't show it.
+
 ## [1.2.1] — 2026-08-13
 
 Correctness fixes from an external audit. Each was reproduced against the code
@@ -40,6 +141,8 @@ before being changed.
   survived 130 green tests.
 
 ### Known issues
+
+> **Resolved in 1.3.0.** Left here as the record of what 1.2.1 shipped with.
 
 Five confirmed bugs share one root cause and are pinned as `xfail(strict=True)`
 so they fail the suite the moment they are fixed. `StateBuilder` computes
@@ -183,6 +286,7 @@ Where safemigrate-lint adds coverage Atlas Pro paywalls or squawk doesn't ship:
 - JSON: sorted findings array with `rule_id`, `severity`, `file`, `line`, `column`, `message`, `help`, `suggested_fix`
 - Markdown: severity-grouped sections with code excerpts, help text, and suggested-fix blocks
 
+[1.3.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.3.0
 [1.2.1]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.2.1
 [1.2.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.2.0
 [1.1.3]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.1.3
