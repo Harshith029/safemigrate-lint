@@ -16,7 +16,7 @@ from typing import Any
 from pglast import ast
 
 from ..core.finding import Finding, Severity
-from ..core.state import MigrationState, table_created_in_migration
+from ..core.state import MigrationState, table_known_empty
 from ._registry import RuleContext, register_rule
 
 RULE_ID = "concurrent-index-create-required"
@@ -39,7 +39,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         return
 
     target = _target_table(stmt)
-    if target and table_created_in_migration(state, target):
+    if target and table_known_empty(state, target):
         # Suppress: index target is a brand-new (empty) table — no lock pain.
         return
 

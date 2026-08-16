@@ -8,7 +8,7 @@ A GitHub Action that lints Postgres migration SQL on every PR. Catches the opera
 
 - 33 safety rules + 6 opt-in style rules across CRITICAL / WARNING / STYLE tiers
 - Real Postgres parser via [pglast](https://github.com/lelit/pglast) (libpg_query) — handles extension SQL (TimescaleDB, PostGIS) that other linters trip on
-- Cross-statement context — suppresses FK-to-new-table and similar false positives that pile up in single-statement linters
+- Cross-statement context — suppresses FK-to-new-table and similar false positives that pile up in single-statement linters, using ordered, schema-qualified state so a later statement can't excuse an earlier hazard
 - Lock impact on each finding — which lock the operation takes, how long it's held, and what it blocks
 - Posts a find-or-create PR comment with per-finding detail; creates a Check Run with severity-mapped conclusion
 

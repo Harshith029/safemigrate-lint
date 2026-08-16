@@ -156,13 +156,13 @@ print(type(parse_sql('CREATE MATERIALIZED VIEW m AS SELECT 1;')[0].stmt).__name_
 ```
 
 Add the branch in `src/safemigrate_lint/core/state.py`, inside
-`StateBuilder.build`'s statement loop:
+`StateBuilder.advance` — the method the engine calls after a statement's rules
+have run:
 
 ```python
-elif isinstance(stmt, ast.CreateTableAsStmt):
-    rel = stmt.into.rel if stmt.into else None
-    if rel and rel.relname:
-        state.tables_created.add(rel.relname)
+created = _relation_of(stmt)          # handles CreateStmt + CreateTableAsStmt
+if created is not None:
+    state.relations_created.add(created)
 ```
 
 This is the general pattern: **if your rule's suppression needs to know something
@@ -170,6 +170,27 @@ earlier statements did, teach `StateBuilder` to record it** (add a field to
 `MigrationState` for anything that isn't a created relation name). Lesson worth
 internalizing — a suppression that references untracked state is a silent
 no-op, not an error, so always add a `safe_` fixture that *proves* it fires.
+
+### Which helper to use
+
+Two helpers answer two different questions, and picking the wrong one is how a
+real hazard gets suppressed:
+
+| helper | asks | use when |
+| ------ | ---- | -------- |
+| `table_known_empty(state, name)` | created earlier **and** still empty | the warning's premise is that the operation is cheap — a rewrite, constraint scan, or index build over zero rows |
+| `table_created_in_migration(state, name)` | does it exist yet | the premise is only that nothing outside can see it yet, e.g. a matview with no readers |
+
+Most rules want `table_known_empty`. Creating a table does not prove it is
+empty: the migration may have inserted into it, or created it with
+`CREATE TABLE AS`, which populates on creation.
+
+State is **ordered**. A rule only ever sees what happened strictly before the
+statement it is judging, so a `CREATE` later in the file cannot retroactively
+excuse an earlier statement. Names are compared by schema-qualified identity —
+an unqualified name resolves to `public` under the default `search_path`, but
+never matches a different explicit schema, and is left unresolved when the
+migration has claimed that bare name in another schema.
 
 ## Step 3 — register it
 
@@ -228,7 +249,8 @@ the golden diff together — and describe the production incident it prevents.
 - **Position:** always `line, column = ctx.line_col()`. Don't compute offsets by hand.
 - **Multiple sub-commands** (e.g. `ALTER TABLE` with several `cmds`): loop and
   `yield` one `Finding` per offending command — see `drop_column_restricted.py`.
-- **Cross-statement suppression:** `table_created_in_migration(state, name)`; add
+- **Cross-statement suppression:** `table_known_empty(state, name)` (or
+  `table_created_in_migration` when you only mean "exists yet"); add
   new tracked state in `core/state.py` if your rule needs more (see
   `constraint_not_valid_required.py` for the canonical pattern).
 - **Severity:** `CRITICAL` = will damage prod; `WARNING` = real risk in context;

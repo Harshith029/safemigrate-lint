@@ -3,10 +3,13 @@
 Fires WARNING on `ALTER TABLE … ADD CONSTRAINT … CHECK (…)` or
 `ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY …` when NOT VALID is missing.
 Postgres validates the constraint against existing rows; on a large pre-existing
-table this scan can take minutes while holding AccessExclusiveLock.
+table this scan can take minutes. The lock differs by constraint type: a FOREIGN
+KEY takes SHARE ROW EXCLUSIVE on both the referencing and referenced table, a
+CHECK takes ACCESS EXCLUSIVE. The finding reports whichever applies.
 
-Suppressed when the table was created in the same migration (empty → no
-validation cost). NOT VALID is the Postgres mechanism for adding the constraint
+Suppressed when an earlier statement in this migration created the table and
+nothing has written to it since — an empty table costs nothing to validate.
+NOT VALID is the Postgres mechanism for adding the constraint
 immediately (catalog-only) and validating later with `VALIDATE CONSTRAINT`,
 which uses a weaker ShareUpdateExclusiveLock.
 
@@ -26,7 +29,7 @@ from pglast.enums import AlterTableType, ConstrType
 from ..core.ast_utils import table_name
 from ..core.finding import Finding, Severity
 from ..core.lock_impact import ADD_CHECK_LOCK, ADD_FOREIGN_KEY_LOCK
-from ..core.state import MigrationState, table_created_in_migration
+from ..core.state import MigrationState, table_known_empty
 from ._registry import RuleContext, register_rule
 
 RULE_ID = "constraint-not-valid-required"
@@ -38,8 +41,9 @@ RULE_ID = "constraint-not-valid-required"
     applies_to=(ast.AlterTableStmt,),
     doc=(
         "ALTER TABLE ADD CONSTRAINT (CHECK or FOREIGN KEY) without NOT VALID requires "
-        "a full table scan to validate against existing rows, holding "
-        "AccessExclusiveLock for the duration. Use NOT VALID to add the constraint "
+        "a full table scan to validate against existing rows — holding SHARE ROW "
+        "EXCLUSIVE for a FOREIGN KEY (on both tables) or ACCESS EXCLUSIVE for a "
+        "CHECK. Use NOT VALID to add the constraint "
         "instantly (catalog-only), then run VALIDATE CONSTRAINT in a separate "
         "migration with the weaker ShareUpdateExclusiveLock."
     ),
@@ -49,7 +53,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         return
 
     table = table_name(stmt.relation)
-    if table and table_created_in_migration(state, table):
+    if table and table_known_empty(state, table):
         return  # empty table — no validation cost
 
     line, column = ctx.line_col()

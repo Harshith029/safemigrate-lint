@@ -6,9 +6,10 @@ can catch a rule that is confidently wrong, or a hazard silently suppressed.
 These tests come at it from the other side: cases where the tool must *not*
 fire, and cases where suppression must not apply.
 
-Tests marked `xfail(strict=True)` document confirmed bugs that need the ordered,
-schema-aware state redesign. They fail the suite if they start passing, so the
-redesign can't land without deleting the marker and proving the fix.
+Every case here reproduced a real defect before it was fixed. They stay as
+permanent regressions: each one is a mistake this codebase actually made once,
+and the class of mistake — a confidently wrong Postgres claim, or suppression
+resting on an unproven premise — is easy to reintroduce.
 """
 
 from __future__ import annotations
@@ -156,24 +157,23 @@ def test_escaping_leaves_ordinary_identifiers_readable() -> None:
 
 
 # --- F-01 / F-02 / F-03  whole-file state used as prior state ----------------
-# StateBuilder computes every fact about a file before any statement is checked,
-# so rules read "created anywhere in the file" as "created earlier, in this
-# schema, and still empty". Those are three different claims and none is proven.
+# StateBuilder used to compute every fact about a file before any statement was
+# checked, so rules read "created anywhere in the file" as "created earlier, in
+# this schema, and still empty" — three claims, none proven. State is now
+# advanced statement by statement, keyed on schema-qualified identity, and
+# tracks writes so "created" no longer implies "empty".
 
 
-@pytest.mark.xfail(strict=True, reason="F-01: whole-file state; needs ordered snapshots")
 def test_drop_index_not_suppressed_by_a_later_create() -> None:
     sql = "DROP INDEX idx_foo;\nCREATE INDEX idx_foo ON t (c);\n"
     assert "concurrent-index-drop-required" in _ids(sql)
 
 
-@pytest.mark.xfail(strict=True, reason="F-02: bare-name matching; needs qualified identities")
 def test_other_schema_does_not_suppress_public_table() -> None:
     sql = "CREATE TABLE audit.users (id int);\nALTER TABLE public.users ADD COLUMN c int NOT NULL;\n"
     assert "add-non-nullable-without-default" in _ids(sql)
 
 
-@pytest.mark.xfail(strict=True, reason="F-03: created != empty; needs mutation tracking")
 def test_created_then_populated_table_is_not_treated_as_empty() -> None:
     sql = (
         "CREATE TABLE staging (id int);\n"
@@ -185,15 +185,16 @@ def test_created_then_populated_table_is_not_treated_as_empty() -> None:
 
 # --- F-05 / F-06  transaction semantics -------------------------------------
 # Postgres treats a second BEGIN as a no-op that emits a warning; it does not
-# open a nested transaction, and the next COMMIT closes the original one.
+# open a nested transaction, and the next COMMIT closes the original one. The
+# old model incremented a depth counter, so that COMMIT looked like it left a
+# transaction open. Transaction state is also ordered now, so a BEGIN *after* a
+# CREATE INDEX CONCURRENTLY no longer retroactively condemns it.
 
 
-@pytest.mark.xfail(strict=True, reason="F-05: nested BEGIN modelled as depth; PG says no-op")
 def test_nested_begin_then_commit_leaves_nothing_uncommitted() -> None:
     assert "uncommitted-transaction-banned" not in _ids("BEGIN;\nBEGIN;\nCOMMIT;\n")
 
 
-@pytest.mark.xfail(strict=True, reason="F-06: any BEGIN in the file counts; needs ordered state")
 def test_concurrent_index_before_an_unrelated_transaction_is_clean() -> None:
     sql = "CREATE INDEX CONCURRENTLY idx ON t (c);\nBEGIN;\nCOMMIT;\n"
     assert "index-concurrent-in-transaction-banned" not in _ids(sql)

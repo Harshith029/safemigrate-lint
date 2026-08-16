@@ -23,7 +23,7 @@ from pglast.enums import AlterTableType, ConstrType
 
 from ..core.ast_utils import table_name
 from ..core.finding import Finding, Severity
-from ..core.state import MigrationState, table_created_in_migration
+from ..core.state import MigrationState, table_known_empty
 from ._registry import RuleContext, register_rule
 
 RULE_ID = "stored-generated-column-rewrites"
@@ -48,7 +48,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         return
 
     table = table_name(stmt.relation)
-    if table and table_created_in_migration(state, table):
+    if table and table_known_empty(state, table):
         return  # Atlas PG309 also suppresses — same-migration table, empty, no rewrite
 
     line, column = ctx.line_col()

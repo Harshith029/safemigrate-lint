@@ -39,7 +39,10 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         return
     if not stmt.concurrent:
         return
-    if not state.has_explicit_transaction_begin:
+    # Only a transaction that is *open at this point* can contain the index
+    # build. A BEGIN later in the file is irrelevant — flagging on that was a
+    # false positive on a perfectly valid migration.
+    if not state.in_explicit_transaction:
         return
 
     line, column = ctx.line_col()

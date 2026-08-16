@@ -13,7 +13,7 @@ from typing import Any
 from .finding import Finding
 from .lock_impact import lock_impact_for
 from .parser import ParseResult
-from .state import MigrationState
+from .state import MigrationState, StateBuilder
 
 
 def analyze(result: ParseResult, state: MigrationState) -> list[Finding]:
@@ -60,6 +60,10 @@ def analyze(result: ParseResult, state: MigrationState) -> list[Finding]:
                     if impact:
                         finding = replace(finding, lock_impact=impact)
                 findings.append(finding)
+
+        # Fold this statement in only after its rules have run, so a rule can
+        # never be suppressed by something that happens later in the file.
+        StateBuilder.advance(state, inner)
 
     return findings
 
