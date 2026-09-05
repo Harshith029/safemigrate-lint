@@ -6,7 +6,7 @@
 
 A GitHub Action that lints Postgres migration SQL on every PR, and tells you which lock each flagged operation takes and what that blocks. Static analysis only — no database connection, no schema access.
 
-- 32 safety rules + 7 opt-in style rules across CRITICAL / WARNING / STYLE tiers
+- 32 safety rules + 7 opt-in style rules. **CRITICAL is reserved for hazards the diff doesn't reveal** — a rewrite hiding inside `ALTER COLUMN TYPE`, not a `DROP COLUMN` you can see and meant to write
 - Real Postgres parser via [pglast](https://github.com/lelit/pglast) (libpg_query) — the PG 17 grammar, so extension SQL (TimescaleDB, PostGIS) parses like anything else
 - Cross-statement context — suppresses FK-to-new-table and similar false positives that pile up in single-statement linters, using ordered, schema-qualified state so a later statement can't excuse an earlier hazard
 - Lock impact on each finding — which lock the operation takes, how long it's held, and what it blocks
@@ -28,12 +28,12 @@ On every pull request, safemigrate-lint posts a comment that groups findings by 
 
 🔒 Heaviest lock: ACCESS EXCLUSIVE — blocks reads + writes.
 
-### 🔴 CRITICAL — drop-column-restricted
+### 🔴 CRITICAL — column-type-change-rewrites-table
 migrations/0042_cleanup.sql:2
-DROP COLUMN deleteat on threads is irreversible data loss.
+ALTER COLUMN amount TYPE on payments rewrites every row and locks the table.
 
-🔒 Lock: ACCESS EXCLUSIVE | held: instant (catalog only) | blocks: reads + writes (briefly)
-the real risk is irreversible data loss, not the lock
+🔒 Lock: ACCESS EXCLUSIVE | held: full table rewrite | blocks: reads + writes
+safe path: expand-contract (new column, backfill, swap)
 
 ### 🟡 WARNING — constraint-not-valid-required
 migrations/0042_cleanup.sql:8
@@ -114,7 +114,7 @@ The action's step exits non-zero whenever the lint finds anything (so workflows 
 | --------------------- | ----------------- | ---------------------------------------- |
 | none                  | `success`         | safe to merge                            |
 | warnings / style only | `neutral`         | review, but doesn't block                |
-| any critical          | `action_required` | look at this before merging              |
+| any critical          | `action_required` | a cost the SQL doesn't look like it has  |
 
 In branch protection, require `safemigrate-lint` (the Check Run name) as a status check. The PR will be blocked on critical findings while warnings stay non-blocking.
 

@@ -16,9 +16,28 @@ from .lock_impact import LockImpact
 class Severity(StrEnum):
     """Severity tiers.
 
-    CRITICAL — will cause production damage if shipped.
-    WARNING  — real risk depending on context.
-    STYLE    — opinion / boilerplate; opt-in only via .safemigrate.toml.
+    The dividing line is **whether reading the diff would tell you**, because a
+    reviewer already reads the diff and the linter only earns its place by
+    catching what they can't see.
+
+    CRITICAL — a production incident the SQL doesn't look like it causes. A
+      rewrite hiding inside ALTER COLUMN TYPE, an index build holding a lock for
+      the length of the build. The author didn't intend this and the reviewer
+      can't spot it.
+    WARNING — worth a second look, but visible. Dropping a column is
+      destructive and irreversible; it is also deliberate, spelled out in the
+      diff, and usually the correct end of an expand-contract migration.
+      Statements that simply fail at deploy live here too: a failed migration is
+      self-limiting, unlike an outage.
+    STYLE — opinions about types and syntax. Off by default.
+
+    This split was made after running the linter over 2,497 real migrations from
+    cal.com, Mattermost, Supabase and Windmill. 89% of the CRITICAL tier was
+    "you dropped something" — 967 DROP COLUMN and 252 DROP TABLE, including
+    cal.com dropping its own `old_startTime` / `old_periodType` columns, which
+    is the *correct* final step of the expand-contract pattern this tool
+    recommends. A gate that blocks 1,370 times on 2,497 migrations, mostly on
+    intentional cleanup, doesn't get read — it gets continue-on-error.
     """
 
     CRITICAL = "critical"

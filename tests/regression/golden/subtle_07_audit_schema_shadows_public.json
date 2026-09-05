@@ -1,7 +1,7 @@
 [
   {
     "rule_id": "add-non-nullable-without-default",
-    "severity": "critical",
+    "severity": "warning",
     "file": "subtle_07_audit_schema_shadows_public.sql",
     "line": 13,
     "column": 0,

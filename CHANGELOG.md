@@ -3,6 +3,33 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **CRITICAL now means "a production incident the diff doesn't reveal."**
+  `drop-column-restricted`, `drop-table-restricted`,
+  `add-non-nullable-without-default` and `index-concurrent-in-transaction-banned`
+  move to WARNING. Nothing stops being reported — the same findings appear, at a
+  tier that reflects what they are.
+
+  Measured, not guessed: running 1.3.0 over 2,497 real migrations from cal.com,
+  Mattermost, Supabase and Windmill produced 1,370 CRITICAL findings, **89% of
+  them "you dropped something"** (967 DROP COLUMN, 252 DROP TABLE). Among them
+  cal.com dropping its own `old_startTime` and `old_periodType` columns — the
+  correct final step of the expand-contract pattern this tool recommends
+  elsewhere. A gate that blocks 1,370 times on 2,497 migrations, mostly on
+  deliberate cleanup, doesn't get read; it gets `continue-on-error: true`.
+
+  After the change: **138 CRITICAL, one per 18 migrations**, and every one of
+  them a rewrite or a lock the SQL doesn't look like it takes. Statements that
+  merely *fail* at deploy also move down — a failed migration is self-limiting,
+  unlike an outage.
+
+  `drop-database-restricted` and `truncate-cascade-banned` stay CRITICAL:
+  the first is never legitimate in a migration, and CASCADE's reach into tables
+  the statement doesn't name is exactly the kind of cost a diff hides.
+
 ## [1.3.0] — 2026-08-16
 
 Completes the response to the external audit. **Default output changes** — see

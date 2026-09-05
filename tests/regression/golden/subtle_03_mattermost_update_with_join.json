@@ -1,7 +1,7 @@
 [
   {
     "rule_id": "drop-column-restricted",
-    "severity": "critical",
+    "severity": "warning",
     "file": "subtle_03_mattermost_update_with_join.sql",
     "line": 2,
     "column": 0,

@@ -1,7 +1,7 @@
 [
   {
     "rule_id": "add-non-nullable-without-default",
-    "severity": "critical",
+    "severity": "warning",
     "file": "subtle_09_created_then_populated_table.sql",
     "line": 16,
     "column": 0,
