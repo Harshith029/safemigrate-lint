@@ -198,3 +198,31 @@ def test_nested_begin_then_commit_leaves_nothing_uncommitted() -> None:
 def test_concurrent_index_before_an_unrelated_transaction_is_clean() -> None:
     sql = "CREATE INDEX CONCURRENTLY idx ON t (c);\nBEGIN;\nCOMMIT;\n"
     assert "index-concurrent-in-transaction-banned" not in _ids(sql)
+
+
+# --- rule design: a rule that fires on everything says nothing ---------------
+# update-delete-row-scope fired on every UPDATE and DELETE, so a reader couldn't
+# tell the dangerous one from the routine ones and would suppress the rule
+# wholesale. It now fires only where the answer is certain: no WHERE clause
+# means every row, by definition rather than by guess.
+
+
+@pytest.mark.parametrize(
+    "sql",
+    ["UPDATE t SET c = 1;", "DELETE FROM t;"],
+)
+def test_missing_where_is_reported(sql: str) -> None:
+    assert "update-delete-row-scope" in _ids(sql)
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "UPDATE t SET c = 1 WHERE id = 5;",
+        "DELETE FROM t WHERE created_at < now();",
+        "UPDATE t SET c = 1 WHERE ctid IN (SELECT ctid FROM t LIMIT 1000);",
+    ],
+)
+def test_bounded_looking_mutation_is_not_guessed_at(sql: str) -> None:
+    """Row counts behind a WHERE are data-dependent; a guess isn't a finding."""
+    assert "update-delete-row-scope" not in _ids(sql)

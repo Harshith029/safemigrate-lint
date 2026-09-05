@@ -1,14 +1,20 @@
 """update-delete-row-scope — Bytebase statement.affected-row-limit equivalent.
 
-Fires WARNING on every UPDATE and DELETE statement. Static analysis cannot
-prove the WHERE clause is bounded, and unbounded UPDATE/DELETE statements are
-one of the most common root causes of replication lag and connection-pool
-exhaustion incidents. The rule defensively prompts the author to verify the
-row scope.
+Fires WARNING on an UPDATE or DELETE with **no WHERE clause**. That statement
+touches every row in the table — not as an estimate, but by definition — which
+is the case where mass mutation is certain rather than suspected.
 
-squawk has no rule for any UPDATE/DELETE and Atlas does not either; only Bytebase
-covers this. We adopt it because the corpus and incident literature both show
-unbounded mass mutations are a real production hazard no other free tool catches.
+It used to fire on every UPDATE and DELETE, on the reasoning that static
+analysis can't prove a WHERE clause is bounded. True, but a rule that fires on
+100% of a construct carries no information: the reader can't tell the dangerous
+one from the other twenty, so they suppress the rule and lose the signal
+entirely. Firing only where the answer is certain is worth more than flagging a
+category.
+
+A bounded-looking WHERE can still match millions of rows, and this will not
+catch that. Row counts are data-dependent and out of reach without a database
+connection; the help text says so rather than implying coverage that isn't
+there.
 """
 
 from __future__ import annotations
@@ -31,17 +37,23 @@ RULE_ID = "update-delete-row-scope"
     severity=Severity.WARNING,
     applies_to=(ast.UpdateStmt, ast.DeleteStmt),
     doc=(
-        "UPDATE and DELETE statements affect an unbounded number of rows from the "
-        "analyzer's perspective. Static analysis cannot determine if the WHERE clause "
-        "is bounded — that depends on runtime data. Unbounded mass UPDATE/DELETE is a "
-        "leading cause of replication lag and connection-pool exhaustion. Verify the "
-        "expected row count; for large updates, batch with ctid IN (... LIMIT N) or "
-        "use a separate batched-migration job. Matches Bytebase statement.affected-"
-        "row-limit."
+        "UPDATE or DELETE with no WHERE clause rewrites or removes every row in the "
+        "table. On a large table that means a long transaction, row locks held "
+        "throughout, and a WAL burst that lags replicas. Add a WHERE clause, or batch "
+        "the mutation in chunks that commit individually. A statement that *has* a "
+        "WHERE clause is not flagged — its row count depends on data this analyzer "
+        "cannot see. Narrower than Bytebase statement.affected-row-limit, which needs "
+        "a live connection to count rows."
     ),
 )
 def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Finding]:
     if not isinstance(stmt, (ast.UpdateStmt, ast.DeleteStmt)):
+        return
+
+    # A WHERE clause makes the row count data-dependent, and this analyzer has no
+    # database to ask. Guessing there produced a finding on every mutation; the
+    # no-WHERE case is the one we can state as fact.
+    if stmt.whereClause is not None:
         return
 
     line, column = ctx.line_col()
@@ -55,18 +67,21 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         line=line,
         column=column,
         message=(
-            f"{op} on {table or 'table'} — verify the WHERE clause is bounded; "
-            f"unbounded mass mutations cause replication lag and pool exhaustion."
+            f"{op} on {table or 'table'} has no WHERE clause — it touches every "
+            f"row in the table."
         ),
         help=(
-            f"Static analysis cannot prove a WHERE clause bounds the row count. If the "
-            f"{op} can match more than ~10K rows, batch the operation: identify the "
-            f"target rows by primary key in chunks (ORDER BY pk LIMIT N), then loop. "
-            f"Mass {op}s on big tables block replication for minutes, can exhaust the "
-            f"connection pool by piling app writes behind row locks, and produce huge "
-            f"WAL volume which lags replicas. If you have verified the WHERE clause "
-            f"bounds the rows tightly (e.g. WHERE id = constant), suppress with "
-            f"`-- safemigrate:ignore=update-delete-row-scope reason=\"bounded by PK\"`."
+            f"With no WHERE clause this {op} touches every row, so the cost scales with "
+            f"the whole table rather than with what you meant to change. On a large "
+            f"table that means one long transaction holding row locks throughout, and a "
+            f"WAL burst that lags replicas for as long as it takes to replay. Either "
+            f"add a WHERE clause, or batch the mutation into chunks that each commit. "
+            f"Note this rule only fires when the statement has no WHERE at all — a "
+            f"WHERE that still matches millions of rows is not detectable without a "
+            f"database connection, so passing this check is not evidence the row count "
+            f"is small. If rewriting every row is the intent (a small lookup table, or "
+            f"a table this migration just created), suppress with "
+            f"`-- safemigrate:ignore=update-delete-row-scope reason=\"...\"`."
         ),
         suggested_fix=_batched_fix(op, table or "<table>"),
     )

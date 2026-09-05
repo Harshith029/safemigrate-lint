@@ -4,10 +4,10 @@
 [![PyPI](https://img.shields.io/pypi/v/safemigrate-lint.svg)](https://pypi.org/project/safemigrate-lint/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A GitHub Action that lints Postgres migration SQL on every PR. Catches the operations that actually break production — written for the real shape of production migrations, not the textbook one.
+A GitHub Action that lints Postgres migration SQL on every PR, and tells you which lock each flagged operation takes and what that blocks. Static analysis only — no database connection, no schema access.
 
 - 32 safety rules + 7 opt-in style rules across CRITICAL / WARNING / STYLE tiers
-- Real Postgres parser via [pglast](https://github.com/lelit/pglast) (libpg_query) — handles extension SQL (TimescaleDB, PostGIS) that other linters trip on
+- Real Postgres parser via [pglast](https://github.com/lelit/pglast) (libpg_query) — the PG 17 grammar, so extension SQL (TimescaleDB, PostGIS) parses like anything else
 - Cross-statement context — suppresses FK-to-new-table and similar false positives that pile up in single-statement linters, using ordered, schema-qualified state so a later statement can't excuse an earlier hazard
 - Lock impact on each finding — which lock the operation takes, how long it's held, and what it blocks
 - Posts a find-or-create PR comment with per-finding detail; creates a Check Run with severity-mapped conclusion
@@ -55,11 +55,25 @@ Suggested fix:
 
 ## Why
 
-The rules were chosen by reading real migration history from Cal.com, Mattermost, Supabase, Hasura, and TimescaleDB, rather than from a list of textbook hazards. What stood out is that the operations popular linters warn loudest about — a raw `DROP TABLE` in application migrations, say — barely occur. The risks that do occur live one layer deeper: ADD COLUMN GENERATED triggering a table rewrite, ADD CONSTRAINT FK without `NOT VALID`, dynamic SQL the analyzer can't see, constraint drops that silently break invariants. safemigrate-lint is built around those.
+Most teams don't lint migrations at all — the check that catches an
+`ALTER TABLE` about to hold AccessExclusiveLock for four minutes simply isn't in
+their pipeline. That's the gap this fills, and it's why the install path is one
+paste rather than a binary plus a workflow you write yourself.
 
-That reading informed the rule set; it isn't a published study, and this repo doesn't ship the full corpus or a script to reproduce it. What it does ship is [`fixtures/migrations/`](fixtures/migrations) — 23 real migrations from those projects, each with a committed golden output — so every claim about *this tool's* behavior is reproducible with `pytest`.
+On rule selection, honestly: the catalog was assembled largely by working
+through what [squawk](https://github.com/sbdchd/squawk), Atlas, and Bytebase
+already check, then reading migration history from Cal.com, Mattermost,
+Supabase, Hasura, and TimescaleDB to decide which of those belong in a
+**default-on** gate and which are opinions. The commit log names the source rule
+for most of them. What's distinctive here isn't the rule list — it's that each
+finding reports the lock the operation takes and what that blocks, and that
+suppression is ordered and schema-aware rather than whole-file.
 
-Atlas Pro charges $9/dev + $59/CI + $39/db per month for many of these checks. This action ships them free, MIT.
+Two limits worth stating up front, because they bound how much this can tell
+you. There is no database connection, so nothing here knows your table sizes,
+your `search_path`, or whether your migration runner wraps files in a
+transaction. And a *missing* finding is not evidence a migration is safe — it
+means no rule matched.
 
 ## Quickstart
 
@@ -281,14 +295,17 @@ enabled = ["bigint-over-int-preferred"]                # promote STYLE -> WARNIN
 |                                          | safemigrate-lint                                | squawk                          |
 | ---------------------------------------- | ----------------------------------------------- | ------------------------------- |
 | Parser                                   | pglast (libpg_query — Postgres's own parser, PG 17 grammar) | Rust reimplementation           |
-| Extension SQL (TimescaleDB / PostGIS)    | parses cleanly                                  | known parser gaps on newer SQL  |
 | Cross-statement context                  | yes — ordered, schema-qualified; suppresses FK / index / constraint rules only on tables created earlier and still empty | per-statement only |
 | Out-of-the-box GitHub Action             | yes (this repo)                                 | shipped binary + DIY workflow   |
 | PR comments + Check Run                  | built-in                                        | DIY                             |
 | Rule count                               | 32 safety + 7 opt-in style                      | 37 rules                        |
-| Default-mode signal on a 23-fixture corpus | 29 findings                                     | 205 findings                    |
+| Findings on default settings, 27-fixture corpus | 31                                          | 234                             |
 
-> squawk's count was measured with squawk 2.56.0 in its default configuration on this repo's `fixtures/migrations/`; reproduce this tool's number with `safemigrate-lint fixtures/migrations/*.sql`. Most of squawk's extra findings are its style/opinion rules (`prefer-robust-stmts`, `prefer-bigint-over-int`, `prefer-identity`, …), which safemigrate-lint ships as opt-in STYLE rules rather than firing by default. A lower count is not automatically better — it reflects a deliberate choice about what belongs in a default-on gate, and squawk's broader catalog may suit you better.
+> Both counts measured on this repo's `fixtures/migrations/` — squawk 2.56.0 and safemigrate-lint 1.3.0, each in its default configuration. Reproduce with `squawk fixtures/migrations/*.sql` and `safemigrate-lint fixtures/migrations/*.sql`.
+>
+> **This measures volume, not accuracy.** Neither number says anything about how many real problems each tool caught — establishing that needs migrations with known outcomes, which nobody has published. A tool that reported nothing would "win" this row. What the gap does show is a difference in default posture: most of squawk's extra findings are style rules (`prefer-robust-stmts`, `prefer-bigint-over-int`, `prefer-identity`, …) that this tool ships as opt-in. If you want those on by default, that's an argument for squawk, not against it.
+>
+> On parsing, measured rather than asserted: squawk parsed all 27 fixtures, plus PostGIS and TimescaleDB DDL, without error. Earlier versions of this README claimed an advantage there. There isn't one.
 
 If you want the broadest rule catalog and you're comfortable wiring the action yourself, squawk is mature and well-maintained. If you want a one-paste install plus FK-to-new-table suppression by default, this is the trade.
 
