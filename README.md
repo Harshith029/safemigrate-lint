@@ -295,6 +295,7 @@ enabled = ["bigint-over-int-preferred"]                # promote STYLE -> WARNIN
 |                                          | safemigrate-lint                                | squawk                          |
 | ---------------------------------------- | ----------------------------------------------- | ------------------------------- |
 | Parser                                   | pglast (libpg_query — Postgres's own parser, PG 17 grammar) | Rust reimplementation           |
+| Parse failures, 2,497 real migrations    | 20 (all MySQL files or psql scripts)            | those same 20, plus 3           |
 | Cross-statement context                  | yes — ordered, schema-qualified; suppresses FK / index / constraint rules only on tables created earlier and still empty | per-statement only |
 | Out-of-the-box GitHub Action             | yes (this repo)                                 | shipped binary + DIY workflow   |
 | PR comments + Check Run                  | built-in                                        | DIY                             |
@@ -305,7 +306,9 @@ enabled = ["bigint-over-int-preferred"]                # promote STYLE -> WARNIN
 >
 > **This measures volume, not accuracy.** Neither number says anything about how many real problems each tool caught — establishing that needs migrations with known outcomes, which nobody has published. A tool that reported nothing would "win" this row. What the gap does show is a difference in default posture: most of squawk's extra findings are style rules (`prefer-robust-stmts`, `prefer-bigint-over-int`, `prefer-identity`, …) that this tool ships as opt-in. If you want those on by default, that's an argument for squawk, not against it.
 >
-> On parsing, measured rather than asserted: squawk parsed all 27 fixtures, plus PostGIS and TimescaleDB DDL, without error. Earlier versions of this README claimed an advantage there. There isn't one.
+> On parsing, measured rather than asserted, over 2,497 real migrations from cal.com, Mattermost, Supabase and Windmill: squawk reported a syntax error on 23 files, this tool on 20, and those 20 are a strict subset — all of them MySQL migrations or psql scripts that neither tool should accept. The 3 extra are Windmill views written as `CREATE OR REPLACE VIEW v AS (SELECT ...)`; squawk's parser rejects the parenthesized body, libpg_query accepts it.
+>
+> That is the entire measured difference: 3 files in 2,497, on one construct. An earlier version of this README claimed an advantage on *extension* SQL — squawk parses PostGIS and TimescaleDB DDL perfectly well, and that claim was false.
 
 If you want the broadest rule catalog and you're comfortable wiring the action yourself, squawk is mature and well-maintained. If you want a one-paste install plus FK-to-new-table suppression by default, this is the trade.
 
