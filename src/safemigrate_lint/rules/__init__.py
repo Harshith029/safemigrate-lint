@@ -25,10 +25,12 @@ from . import (
     drop_database_restricted,  # noqa: F401
     drop_table_restricted,  # noqa: F401
     enum_value_ordering_required,  # noqa: F401
+    identifier_too_long,  # noqa: F401
     identity_column_add_rewrites,  # noqa: F401
     identity_over_serial_preferred,  # noqa: F401
     index_concurrent_in_transaction_banned,  # noqa: F401
     index_no_duplicate_column,  # noqa: F401
+    not_null_dropped_warning,  # noqa: F401
     nullable_to_non_nullable_may_fail,  # noqa: F401
     pk_constraint_exclusive_lock,  # noqa: F401
     prefer_robust_stmts,  # noqa: F401

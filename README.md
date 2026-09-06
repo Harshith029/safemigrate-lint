@@ -6,7 +6,7 @@
 
 A GitHub Action that lints Postgres migration SQL on every PR, and tells you which lock each flagged operation takes and what that blocks. Static analysis only — no database connection, no schema access.
 
-- 32 safety rules + 7 opt-in style rules. **CRITICAL is reserved for hazards the diff doesn't reveal** — a rewrite hiding inside `ALTER COLUMN TYPE`, not a `DROP COLUMN` you can see and meant to write
+- 34 safety rules + 7 opt-in style rules. **CRITICAL is reserved for hazards the diff doesn't reveal** — a rewrite hiding inside `ALTER COLUMN TYPE`, not a `DROP COLUMN` you can see and meant to write
 - Real Postgres parser via [pglast](https://github.com/lelit/pglast) (libpg_query) — the PG 17 grammar, so extension SQL (TimescaleDB, PostGIS) parses like anything else
 - Cross-statement context — suppresses FK-to-new-table and similar false positives that pile up in single-statement linters, using ordered, schema-qualified state so a later statement can't excuse an earlier hazard
 - Lock impact on each finding — which lock the operation takes, how long it's held, and what it blocks
@@ -299,7 +299,7 @@ enabled = ["bigint-over-int-preferred"]                # promote STYLE -> WARNIN
 | Cross-statement context                  | yes — ordered, schema-qualified; suppresses FK / index / constraint rules only on tables created earlier and still empty | per-statement only |
 | Out-of-the-box GitHub Action             | yes (this repo)                                 | shipped binary + DIY workflow   |
 | PR comments + Check Run                  | built-in                                        | DIY                             |
-| Rule count                               | 32 safety + 7 opt-in style                      | 37 rules                        |
+| Rule count                               | 34 safety + 7 opt-in style                      | 37 rules                        |
 | Findings on default settings, 27-fixture corpus | 31                                          | 234                             |
 
 > Both counts measured on this repo's `fixtures/migrations/` — squawk 2.56.0 and safemigrate-lint 1.3.0, each in its default configuration. Reproduce with `squawk fixtures/migrations/*.sql` and `safemigrate-lint fixtures/migrations/*.sql`.

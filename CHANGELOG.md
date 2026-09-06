@@ -5,6 +5,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+
+- **`not-null-dropped-warning`** — `ALTER COLUMN … DROP NOT NULL`. The statement
+  is catalog-only and instant; the cost is that readers which treated the column
+  as always-present can start receiving nulls, and restoring the constraint later
+  needs a full scan that fails if any null arrived meanwhile. WARNING: visible in
+  the diff and deliberate.
+- **`identifier-too-long`** — names over Postgres's 63-byte `NAMEDATALEN` limit.
+  Postgres doesn't reject them, it silently truncates, so the object exists under
+  a name the migration never wrote: a later reference to the full name misses,
+  and two names sharing a 63-byte prefix collide.
+
+  Detecting this needed a detour worth recording. libpg_query applies the
+  truncation itself while parsing, so by the time a rule sees the AST the
+  evidence is gone — a real cost of using Postgres's own parser. The check reads
+  the raw SQL instead: a name arriving at exactly the limit, with more identifier
+  characters after it in the source, was truncated. A legitimately 63-byte name
+  has nothing following and is left alone.
+
+  Both rules came from measuring recall rather than guessing. Running this and
+  squawk over 2,497 real migrations (cal.com, Mattermost, Supabase, Windmill)
+  showed only **0.38% of squawk's 13,951 findings** fell in a category with no
+  equivalent here — these two were that gap. Verified against the same corpus
+  afterwards: `DROP NOT NULL` now matches squawk on all 29 files.
+
+  `identifier-too-long` matches on 2 of squawk's 3 files by design. The third
+  contains only `DROP FUNCTION IF EXISTS <long name>` — a *reference*, which
+  truncates to exactly the 63 bytes the CREATE stored and therefore resolves to
+  the right object. Flagging it would be noise, so only names a statement
+  **creates** are checked.
+
 ### Changed
 
 - **CRITICAL now means "a production incident the diff doesn't reveal."**
