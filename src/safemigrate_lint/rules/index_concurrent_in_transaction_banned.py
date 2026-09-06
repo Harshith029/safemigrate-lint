@@ -24,7 +24,7 @@ RULE_ID = "index-concurrent-in-transaction-banned"
 
 @register_rule(
     id=RULE_ID,
-    severity=Severity.CRITICAL,
+    severity=Severity.WARNING,
     applies_to=(ast.IndexStmt,),
     doc=(
         "CREATE INDEX CONCURRENTLY cannot run inside an explicit transaction; "
@@ -49,7 +49,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
     idx_name = stmt.idxname or "<unnamed>"
     yield Finding(
         rule_id=RULE_ID,
-        severity=Severity.CRITICAL,
+        severity=Severity.WARNING,
         file=ctx.file,
         line=line,
         column=column,

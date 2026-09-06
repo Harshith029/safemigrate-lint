@@ -26,7 +26,7 @@ RULE_ID = "add-non-nullable-without-default"
 
 @register_rule(
     id=RULE_ID,
-    severity=Severity.CRITICAL,
+    severity=Severity.WARNING,
     applies_to=(ast.AlterTableStmt,),
     doc=(
         "ALTER TABLE ADD COLUMN with NOT NULL but no DEFAULT fails immediately on a "
@@ -69,7 +69,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             col_name = column_def.colname or "<unnamed>"
             yield Finding(
                 rule_id=RULE_ID,
-                severity=Severity.CRITICAL,
+                severity=Severity.WARNING,
                 file=ctx.file,
                 line=line,
                 column=column,

@@ -3,6 +3,64 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`not-null-dropped-warning`** — `ALTER COLUMN … DROP NOT NULL`. The statement
+  is catalog-only and instant; the cost is that readers which treated the column
+  as always-present can start receiving nulls, and restoring the constraint later
+  needs a full scan that fails if any null arrived meanwhile. WARNING: visible in
+  the diff and deliberate.
+- **`identifier-too-long`** — names over Postgres's 63-byte `NAMEDATALEN` limit.
+  Postgres doesn't reject them, it silently truncates, so the object exists under
+  a name the migration never wrote: a later reference to the full name misses,
+  and two names sharing a 63-byte prefix collide.
+
+  Detecting this needed a detour worth recording. libpg_query applies the
+  truncation itself while parsing, so by the time a rule sees the AST the
+  evidence is gone — a real cost of using Postgres's own parser. The check reads
+  the raw SQL instead: a name arriving at exactly the limit, with more identifier
+  characters after it in the source, was truncated. A legitimately 63-byte name
+  has nothing following and is left alone.
+
+  Both rules came from measuring recall rather than guessing. Running this and
+  squawk over 2,497 real migrations (cal.com, Mattermost, Supabase, Windmill)
+  showed only **0.38% of squawk's 13,951 findings** fell in a category with no
+  equivalent here — these two were that gap. Verified against the same corpus
+  afterwards: `DROP NOT NULL` now matches squawk on all 29 files.
+
+  `identifier-too-long` matches on 2 of squawk's 3 files by design. The third
+  contains only `DROP FUNCTION IF EXISTS <long name>` — a *reference*, which
+  truncates to exactly the 63 bytes the CREATE stored and therefore resolves to
+  the right object. Flagging it would be noise, so only names a statement
+  **creates** are checked.
+
+### Changed
+
+- **CRITICAL now means "a production incident the diff doesn't reveal."**
+  `drop-column-restricted`, `drop-table-restricted`,
+  `add-non-nullable-without-default` and `index-concurrent-in-transaction-banned`
+  move to WARNING. Nothing stops being reported — the same findings appear, at a
+  tier that reflects what they are.
+
+  Measured, not guessed: running 1.3.0 over 2,497 real migrations from cal.com,
+  Mattermost, Supabase and Windmill produced 1,370 CRITICAL findings, **89% of
+  them "you dropped something"** (967 DROP COLUMN, 252 DROP TABLE). Among them
+  cal.com dropping its own `old_startTime` and `old_periodType` columns — the
+  correct final step of the expand-contract pattern this tool recommends
+  elsewhere. A gate that blocks 1,370 times on 2,497 migrations, mostly on
+  deliberate cleanup, doesn't get read; it gets `continue-on-error: true`.
+
+  After the change: **138 CRITICAL, one per 18 migrations**, and every one of
+  them a rewrite or a lock the SQL doesn't look like it takes. Statements that
+  merely *fail* at deploy also move down — a failed migration is self-limiting,
+  unlike an outage.
+
+  `drop-database-restricted` and `truncate-cascade-banned` stay CRITICAL:
+  the first is never legitimate in a migration, and CASCADE's reach into tables
+  the statement doesn't name is exactly the kind of cost a diff hides.
+
 ## [1.3.0] — 2026-08-16
 
 Completes the response to the external audit. **Default output changes** — see

@@ -1,7 +1,7 @@
 [
   {
     "rule_id": "drop-column-restricted",
-    "severity": "critical",
+    "severity": "warning",
     "file": "subtle_06_inline_ignore_suppression.sql",
     "line": 6,
     "column": 0,

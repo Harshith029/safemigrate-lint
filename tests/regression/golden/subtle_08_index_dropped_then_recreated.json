@@ -1,0 +1,34 @@
+[
+  {
+    "rule_id": "concurrent-index-drop-required",
+    "severity": "warning",
+    "file": "subtle_08_index_dropped_then_recreated.sql",
+    "line": 8,
+    "column": 0,
+    "message": "DROP INDEX idx_orders_customer without CONCURRENTLY blocks reads and writes on the underlying table.",
+    "help": "Non-concurrent DROP INDEX acquires AccessExclusiveLock on the table the index belongs to, blocking ALL queries (reads and writes) for the duration. Even brief locks on a hot table can cause queries to queue up and exhaust the connection pool. DROP INDEX CONCURRENTLY uses a non-blocking path; it cannot run inside a transaction, so it must be its own migration statement.",
+    "suggested_fix": "DROP INDEX CONCURRENTLY idx_orders_customer;",
+    "lock_impact": {
+      "lock": "ACCESS EXCLUSIVE",
+      "held": "brief",
+      "blocks": "reads + writes",
+      "note": "safe path: DROP INDEX CONCURRENTLY \u2014 ShareUpdateExclusive"
+    }
+  },
+  {
+    "rule_id": "concurrent-index-create-required",
+    "severity": "warning",
+    "file": "subtle_08_index_dropped_then_recreated.sql",
+    "line": 10,
+    "column": 0,
+    "message": "CREATE INDEX idx_orders_customer without CONCURRENTLY blocks writes on orders for the duration of the build.",
+    "help": "Non-concurrent CREATE INDEX takes AccessExclusiveLock for the full build duration. On a populated table this blocks all writes (UPDATE/INSERT/DELETE) until the index is built \u2014 minutes on a large table. CREATE INDEX CONCURRENTLY uses a slower but non-blocking build path. It cannot run inside a transaction, so it must be its own migration statement.",
+    "suggested_fix": "CREATE INDEX CONCURRENTLY idx_orders_customer ON orders (<columns>);",
+    "lock_impact": {
+      "lock": "SHARE",
+      "held": "for the whole index build",
+      "blocks": "writes (reads still OK)",
+      "note": "safe path: CREATE INDEX CONCURRENTLY \u2014 ShareUpdateExclusive, blocks neither"
+    }
+  }
+]

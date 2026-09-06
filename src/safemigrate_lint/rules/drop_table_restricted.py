@@ -22,7 +22,7 @@ RULE_ID = "drop-table-restricted"
 
 @register_rule(
     id=RULE_ID,
-    severity=Severity.CRITICAL,
+    severity=Severity.WARNING,
     applies_to=(ast.DropStmt,),
     doc=(
         "DROP TABLE is irreversible data loss for the entire relation. All rows, "
@@ -45,7 +45,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         table = qualified_name(obj)
         yield Finding(
             rule_id=RULE_ID,
-            severity=Severity.CRITICAL,
+            severity=Severity.WARNING,
             file=ctx.file,
             line=line,
             column=col_offset,
