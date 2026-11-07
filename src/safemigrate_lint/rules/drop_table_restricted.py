@@ -28,7 +28,7 @@ RULE_ID = "drop-table-restricted"
         "DROP TABLE is irreversible data loss for the entire relation. All rows, "
         "indexes, constraints, and triggers tied to the table are removed. There is "
         "no rollback once the migration runs. Suppress with `-- safemigrate:ignore="
-        "drop-table-restricted reason=\"...\"` after confirming the table has no "
+        'drop-table-restricted reason="..."` after confirming the table has no '
         "production data or is intentionally being decommissioned."
     ),
 )
@@ -58,7 +58,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 "and any rows in tables that reference it via CASCADE. There is no "
                 "rollback path once the migration runs. If this table has production "
                 "data, ensure it has been archived. To suppress, add `-- safemigrate:"
-                "ignore=drop-table-restricted reason=\"...\"` on the line immediately "
+                'ignore=drop-table-restricted reason="..."` on the line immediately '
                 "preceding the DROP TABLE statement."
             ),
             suggested_fix=None,

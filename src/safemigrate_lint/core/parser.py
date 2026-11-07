@@ -92,4 +92,3 @@ def _parse(*, file: str, sql: str) -> ParseResult:
                 ),
             ),
         )
-

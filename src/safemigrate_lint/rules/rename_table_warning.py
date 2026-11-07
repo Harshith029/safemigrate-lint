@@ -47,8 +47,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         line=line,
         column=col,
         message=(
-            f"Renaming table {old} to {new} will break any code that still "
-            f"references {old!r}."
+            f"Renaming table {old} to {new} will break any code that still references {old!r}."
         ),
         help=(
             "RENAME TABLE is catalog-fast (~milliseconds) but the impact is in app code, "

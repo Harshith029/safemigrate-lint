@@ -75,7 +75,5 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 "non-blocking path; it cannot run inside a transaction, so it must be "
                 "its own migration statement."
             ),
-            suggested_fix=(
-                f"DROP INDEX CONCURRENTLY {index_name or 'index_name'};"
-            ),
+            suggested_fix=(f"DROP INDEX CONCURRENTLY {index_name or 'index_name'};"),
         )

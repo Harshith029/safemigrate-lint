@@ -111,7 +111,10 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
 
 def _identity_constraint(column_def: ast.ColumnDef) -> ast.Constraint | None:
     for constraint in column_def.constraints or ():
-        if isinstance(constraint, ast.Constraint) and constraint.contype == ConstrType.CONSTR_IDENTITY:
+        if (
+            isinstance(constraint, ast.Constraint)
+            and constraint.contype == ConstrType.CONSTR_IDENTITY
+        ):
             return constraint
     return None
 

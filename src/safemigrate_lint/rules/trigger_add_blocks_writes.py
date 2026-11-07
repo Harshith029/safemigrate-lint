@@ -77,5 +77,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         ),
         suggested_fix=None,
     )
-
-

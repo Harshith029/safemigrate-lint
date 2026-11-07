@@ -88,5 +88,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 f"UNIQUE USING INDEX {constraint_name}_idx;"
             ),
         )
-
-

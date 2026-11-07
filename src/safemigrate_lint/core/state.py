@@ -299,7 +299,9 @@ def _record(state: MigrationState, entries: set[RelationId], rid: RelationId) ->
         state.ambiguous_bare_names.add(rid.name)
 
 
-def _matching(entries: set[RelationId], target: RelationId, ambiguous: set[str]) -> list[RelationId]:
+def _matching(
+    entries: set[RelationId], target: RelationId, ambiguous: set[str]
+) -> list[RelationId]:
     return [e for e in entries if _same_relation(e, target, ambiguous)]
 
 
@@ -396,9 +398,7 @@ def _taint(state: MigrationState, written: str) -> None:
     if not written:
         return
     target = RelationId.parse(written)
-    state.relations_with_data.update(
-        e for e in state.relations_created if _may_denote(e, target)
-    )
+    state.relations_with_data.update(e for e in state.relations_created if _may_denote(e, target))
 
 
 def _is_with_no_data(stmt: Any) -> bool:

@@ -185,6 +185,8 @@ def test_create_index_says_reads_continue(tmp_path) -> None:
 def test_refresh_concurrently_is_not_said_to_need_its_own_transaction(tmp_path) -> None:
     """It runs fine inside a transaction block — verified on a real server."""
     rule_id = "refresh-matview-blocks-reads"
-    (finding,) = [f for f in _findings(tmp_path, "REFRESH MATERIALIZED VIEW m;") if f.rule_id == rule_id]
+    (finding,) = [
+        f for f in _findings(tmp_path, "REFRESH MATERIALIZED VIEW m;") if f.rule_id == rule_id
+    ]
     text = " ".join([RULES[rule_id].doc, finding.help or "", LOCK_IMPACT[rule_id].note])
     assert "transaction block" not in text

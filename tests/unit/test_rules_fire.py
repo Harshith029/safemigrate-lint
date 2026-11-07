@@ -78,8 +78,7 @@ def test_rule_fires_on_its_trigger(rule_id: str, tmp_path) -> None:
     assert rule_id in TRIGGERS, f"no trigger snippet defined for rule {rule_id!r}"
     fired = _fired_rule_ids(tmp_path, TRIGGERS[rule_id])
     assert rule_id in fired, (
-        f"{rule_id!r} did not fire on its trigger SQL; "
-        f"got {sorted(fired)}. The rule may be broken."
+        f"{rule_id!r} did not fire on its trigger SQL; got {sorted(fired)}. The rule may be broken."
     )
 
 

@@ -117,9 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     levels = args.severity
     if config.style_enabled:
         # Promote configured-enabled STYLE findings into the effective set.
-        all_findings = [
-            _maybe_promote_style(f, config.style_enabled) for f in all_findings
-        ]
+        all_findings = [_maybe_promote_style(f, config.style_enabled) for f in all_findings]
 
     filtered = [f for f in all_findings if f.severity in levels]
 

@@ -75,10 +75,8 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 "this into CD101 (FK), CD102 (CHECK), and CD103 (PK) because Atlas "
                 "performs schema diffing and knows the constraint type. We cannot tell "
                 "from `ALTER TABLE ... DROP CONSTRAINT name` alone — same warning regardless. "
-                "Suppress with `-- safemigrate:ignore=constraint-dropped-warning reason=\"...\"` "
+                'Suppress with `-- safemigrate:ignore=constraint-dropped-warning reason="..."` '
                 "after confirming the drop is intentional."
             ),
             suggested_fix=None,
         )
-
-

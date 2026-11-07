@@ -33,7 +33,7 @@ RULE_ID = "drop-column-restricted"
         "ALTER TABLE DROP COLUMN is irreversible data loss on populated tables. "
         "If the column has rows, those values are unrecoverable post-migration. "
         "Suppress with an inline `-- safemigrate:ignore=drop-column-restricted "
-        "reason=\"...\"` after confirming the column has no production data."
+        'reason="..."` after confirming the column has no production data.'
     ),
 )
 def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Finding]:
@@ -58,19 +58,16 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             line=line,
             column=col_offset,
             message=(
-                f"DROP COLUMN{if_exists} {col} on {table or 'table'} is irreversible "
-                f"data loss."
+                f"DROP COLUMN{if_exists} {col} on {table or 'table'} is irreversible data loss."
             ),
             help=(
                 "DROP COLUMN removes the column and all its data. There is no rollback "
                 "path once the migration runs. If this column has production data, ensure "
                 "you have a backup or are intentionally accepting the loss. To suppress, "
-                "add `-- safemigrate:ignore=drop-column-restricted reason=\"...\"` on the "
+                'add `-- safemigrate:ignore=drop-column-restricted reason="..."` on the '
                 "line immediately preceding the ALTER TABLE statement."
             ),
             # Intentionally no suggested_fix: this rule is about destructive intent;
             # auto-suggesting a "fix" would obscure the danger.
             suggested_fix=None,
         )
-
-

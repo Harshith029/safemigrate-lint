@@ -29,7 +29,7 @@ RULE_ID = "truncate-cascade-banned"
         "TRUNCATE ... CASCADE silently empties not just the target table but every "
         "table that has a FOREIGN KEY referencing it. This is rarely the intended "
         "behavior. If you genuinely want the cascade, suppress with "
-        "`-- safemigrate:ignore=truncate-cascade-banned reason=\"...\"`; otherwise "
+        '`-- safemigrate:ignore=truncate-cascade-banned reason="..."`; otherwise '
         "drop CASCADE and Postgres will refuse the TRUNCATE with a clear error message "
         "listing the dependent tables."
     ),
