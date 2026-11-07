@@ -48,36 +48,40 @@ RULE_ID = "volatile-default-rewrites-table"
 # localtimestamp, statement_timestamp. Those are STABLE — fixed for the whole
 # transaction — so ADD COLUMN ... DEFAULT now() takes the PG11 fast path and
 # does not rewrite. See STABLE_CURRENT_TIME_FUNCTIONS below.
-KNOWN_VOLATILE_FUNCTIONS: frozenset[str] = frozenset({
-    "random",
-    "gen_random_uuid",
-    "clock_timestamp",
-    "timeofday",
-    "nextval",
-    "uuid_generate_v1",
-    "uuid_generate_v1mc",
-    "uuid_generate_v3",
-    "uuid_generate_v4",
-    "uuid_generate_v5",
-    "txid_current",
-    "pg_backend_pid",
-})
+KNOWN_VOLATILE_FUNCTIONS: frozenset[str] = frozenset(
+    {
+        "random",
+        "gen_random_uuid",
+        "clock_timestamp",
+        "timeofday",
+        "nextval",
+        "uuid_generate_v1",
+        "uuid_generate_v1mc",
+        "uuid_generate_v3",
+        "uuid_generate_v4",
+        "uuid_generate_v5",
+        "txid_current",
+        "pg_backend_pid",
+    }
+)
 
 # STABLE current-time functions: one value per transaction, so ADD COLUMN with
 # one of these as DEFAULT takes the PG11 metadata-only fast path. Listed
 # explicitly (rather than merely omitted) so a future edit can't quietly move
 # one into the volatile set — `test_stable_time_functions_are_not_volatile`
 # fails if the two sets ever overlap.
-STABLE_CURRENT_TIME_FUNCTIONS: frozenset[str] = frozenset({
-    "now",
-    "current_timestamp",
-    "current_date",
-    "current_time",
-    "localtimestamp",
-    "localtime",
-    "transaction_timestamp",
-    "statement_timestamp",
-})
+STABLE_CURRENT_TIME_FUNCTIONS: frozenset[str] = frozenset(
+    {
+        "now",
+        "current_timestamp",
+        "current_date",
+        "current_time",
+        "localtimestamp",
+        "localtime",
+        "transaction_timestamp",
+        "statement_timestamp",
+    }
+)
 
 
 @register_rule(
@@ -178,5 +182,3 @@ def _funcname(call: ast.FuncCall) -> str:
     # For Postgres built-ins the name may be ('pg_catalog', 'now') or just ('now',).
     # We compare against the rightmost component.
     return parts[-1] if parts else ""
-
-

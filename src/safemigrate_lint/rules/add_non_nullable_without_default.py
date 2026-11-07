@@ -96,5 +96,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                     f"DEFAULT <const>;"
                 ),
             )
-
-

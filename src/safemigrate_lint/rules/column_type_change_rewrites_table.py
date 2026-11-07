@@ -82,5 +82,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 f"-- 6. ALTER TABLE {table} RENAME COLUMN {col_name}_new TO {col_name};"
             ),
         )
-
-

@@ -103,5 +103,3 @@ def _has_stored_generated_constraint(column_def: ast.ColumnDef) -> bool:
         if constraint.contype == ConstrType.CONSTR_GENERATED:
             return True
     return False
-
-

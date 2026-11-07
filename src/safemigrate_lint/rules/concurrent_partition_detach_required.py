@@ -84,5 +84,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 f"{partition_name or 'partition'} FINALIZE;"
             ),
         )
-
-

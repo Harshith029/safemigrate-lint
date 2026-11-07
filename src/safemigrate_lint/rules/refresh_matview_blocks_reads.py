@@ -70,7 +70,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             "it without blocking readers. It requires a UNIQUE index on the matview "
             "(using only column names, with no WHERE clause). If a brief read stall is acceptable "
             "(e.g. an off-hours batch refresh), suppress with "
-            "`-- safemigrate:ignore=refresh-matview-blocks-reads reason=\"...\"`."
+            '`-- safemigrate:ignore=refresh-matview-blocks-reads reason="..."`.'
         ),
         suggested_fix=f"REFRESH MATERIALIZED VIEW CONCURRENTLY {display};",
     )

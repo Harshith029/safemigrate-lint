@@ -29,9 +29,7 @@ from .location import skip_trivia
 
 # Matches a line that is JUST a safemigrate:ignore comment. Whitespace allowed
 # at start; rule list is word-chars + hyphens; reason is optional.
-_IGNORE_RE = re.compile(
-    r'^\s*--\s*safemigrate:ignore=([\w,-]+)(?:\s+reason="([^"]*)")?\s*$'
-)
+_IGNORE_RE = re.compile(r'^\s*--\s*safemigrate:ignore=([\w,-]+)(?:\s+reason="([^"]*)")?\s*$')
 
 
 def parse_inline_ignores(

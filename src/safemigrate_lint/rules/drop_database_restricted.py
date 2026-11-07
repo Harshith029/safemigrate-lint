@@ -56,7 +56,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             "than intended. Database drops belong outside the migration tool — manual "
             "operator action, not version-controlled migration. If you really do want "
             "this in a migration, suppress with `-- safemigrate:ignore="
-            "drop-database-restricted reason=\"...\"`."
+            'drop-database-restricted reason="..."`.'
         ),
         suggested_fix=None,
     )

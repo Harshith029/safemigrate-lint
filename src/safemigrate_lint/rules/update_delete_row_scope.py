@@ -66,7 +66,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             f"connection pool by piling app writes behind row locks, and produce huge "
             f"WAL volume which lags replicas. If you have verified the WHERE clause "
             f"bounds the rows tightly (e.g. WHERE id = constant), suppress with "
-            f"`-- safemigrate:ignore=update-delete-row-scope reason=\"bounded by PK\"`."
+            f'`-- safemigrate:ignore=update-delete-row-scope reason="bounded by PK"`.'
         ),
         suggested_fix=_batched_fix(op, table or "<table>"),
     )
@@ -82,9 +82,7 @@ def _batched_fix(op: str, table: str) -> str:
 
     Angle-bracketed parts are placeholders for the author to fill in.
     """
-    mutation = (
-        f"UPDATE {table} SET <assignments>" if op == "UPDATE" else f"DELETE FROM {table}"
-    )
+    mutation = f"UPDATE {table} SET <assignments>" if op == "UPDATE" else f"DELETE FROM {table}"
     return (
         f"-- Run this one chunk at a time from your migration runner or a script,\n"
         f"-- committing after each, until it reports 0 rows. Batching only helps if\n"
@@ -95,5 +93,3 @@ def _batched_fix(op: str, table: str) -> str:
         f"  SELECT ctid FROM {table} WHERE <condition> LIMIT 10000\n"
         f");"
     )
-
-

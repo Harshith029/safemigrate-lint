@@ -52,7 +52,13 @@ def _ids(sql: str) -> list[str]:
 
 @pytest.mark.parametrize(
     "expr",
-    ["now()", "current_timestamp", "CURRENT_TIMESTAMP", "localtimestamp", "transaction_timestamp()"],
+    [
+        "now()",
+        "current_timestamp",
+        "CURRENT_TIMESTAMP",
+        "localtimestamp",
+        "transaction_timestamp()",
+    ],
 )
 def test_stable_time_defaults_do_not_rewrite(expr: str) -> None:
     sql = f"ALTER TABLE users ADD COLUMN created_at timestamptz NOT NULL DEFAULT {expr};"
@@ -170,7 +176,9 @@ def test_drop_index_not_suppressed_by_a_later_create() -> None:
 
 
 def test_other_schema_does_not_suppress_public_table() -> None:
-    sql = "CREATE TABLE audit.users (id int);\nALTER TABLE public.users ADD COLUMN c int NOT NULL;\n"
+    sql = (
+        "CREATE TABLE audit.users (id int);\nALTER TABLE public.users ADD COLUMN c int NOT NULL;\n"
+    )
     assert "add-non-nullable-without-default" in _ids(sql)
 
 

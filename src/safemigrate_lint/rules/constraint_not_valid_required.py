@@ -116,5 +116,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             ),
             lock_impact=lock,
         )
-
-

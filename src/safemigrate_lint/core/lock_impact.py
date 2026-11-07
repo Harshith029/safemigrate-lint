@@ -62,15 +62,21 @@ ADD_CHECK_LOCK = LockImpact(_AE, "table scan to validate", "reads + writes", _VA
 LOCK_IMPACT: dict[str, LockImpact] = {
     # --- full table rewrites: heavy lock held for the whole rewrite ---
     "volatile-default-rewrites-table": LockImpact(
-        _AE, "full table rewrite", "reads + writes",
+        _AE,
+        "full table rewrite",
+        "reads + writes",
         "safe path: add the column with no default, backfill in batches — no rewrite",
     ),
     "stored-generated-column-rewrites": LockImpact(
-        _AE, "full table rewrite", "reads + writes",
+        _AE,
+        "full table rewrite",
+        "reads + writes",
         "safe path: add a nullable column and backfill in batches",
     ),
     "column-type-change-rewrites-table": LockImpact(
-        _AE, "full table rewrite", "reads + writes",
+        _AE,
+        "full table rewrite",
+        "reads + writes",
         "safe path: expand-contract (new column, backfill, swap)",
     ),
     "access-method-change-rewrites": LockImpact(_AE, "full table rewrite", "reads + writes"),
@@ -78,72 +84,110 @@ LOCK_IMPACT: dict[str, LockImpact] = {
     "table-logging-mode-rewrites": LockImpact(_AE, "full table rewrite", "reads + writes"),
     # --- validation / index-build scans: heavy lock held for a full scan ---
     "nullable-to-non-nullable-may-fail": LockImpact(
-        _AE, "table scan to verify no NULLs", "reads + writes",
+        _AE,
+        "table scan to verify no NULLs",
+        "reads + writes",
         "PG12+: add a CHECK (col IS NOT NULL) NOT VALID, validate it, then SET NOT NULL",
     ),
     "pk-constraint-exclusive-lock": LockImpact(
-        _AE, "builds the unique index", "reads + writes",
+        _AE,
+        "builds the unique index",
+        "reads + writes",
         "safe path: CREATE UNIQUE INDEX CONCURRENTLY, then ADD PRIMARY KEY USING INDEX",
     ),
     "unique-constraint-exclusive-lock": LockImpact(
-        _AE, "builds the unique index", "reads + writes",
+        _AE,
+        "builds the unique index",
+        "reads + writes",
         "safe path: CREATE UNIQUE INDEX CONCURRENTLY, then ADD CONSTRAINT ... USING INDEX",
     ),
-    "unique-constraint-data-dependent": LockImpact(_AE, "builds the unique index", "reads + writes"),
+    "unique-constraint-data-dependent": LockImpact(
+        _AE, "builds the unique index", "reads + writes"
+    ),
     # --- index / partition maintenance ---
     "concurrent-index-create-required": LockImpact(
-        "SHARE", "for the whole index build", "writes (reads still OK)",
+        "SHARE",
+        "for the whole index build",
+        "writes (reads still OK)",
         "safe path: CREATE INDEX CONCURRENTLY — ShareUpdateExclusive, blocks neither",
     ),
     "concurrent-index-drop-required": LockImpact(
-        _AE, "brief", "reads + writes",
+        _AE,
+        "brief",
+        "reads + writes",
         "safe path: DROP INDEX CONCURRENTLY — ShareUpdateExclusive",
     ),
     # ACCESS EXCLUSIVE is on the index; the table gets SHARE. Reads still stall:
     # planning any query on the table locks every one of its indexes.
     "concurrent-reindex-required": LockImpact(
-        _AE, "for the whole rebuild", "reads + writes (via the index lock)",
+        _AE,
+        "for the whole rebuild",
+        "reads + writes (via the index lock)",
         "safe path: REINDEX ... CONCURRENTLY",
     ),
     "concurrent-partition-detach-required": LockImpact(
-        _AE, "brief, but waits behind in-flight queries", "reads + writes",
+        _AE,
+        "brief, but waits behind in-flight queries",
+        "reads + writes",
         "safe path: DETACH PARTITION CONCURRENTLY",
     ),
-    "trigger-add-blocks-writes": LockImpact("SHARE ROW EXCLUSIVE", "brief", "writes (reads still OK)"),
+    "trigger-add-blocks-writes": LockImpact(
+        "SHARE ROW EXCLUSIVE", "brief", "writes (reads still OK)"
+    ),
     "refresh-matview-blocks-reads": LockImpact(
-        _AE, "for the whole refresh", "reads of the view",
+        _AE,
+        "for the whole refresh",
+        "reads of the view",
         "safe path: REFRESH ... CONCURRENTLY — needs a UNIQUE index on the matview",
     ),
     # --- row-level mutation: light table lock, but a long transaction ---
     "update-delete-row-scope": LockImpact(
-        _RE, "until the transaction commits", "writes to the rows it touches (reads still OK)",
+        _RE,
+        "until the transaction commits",
+        "writes to the rows it touches (reads still OK)",
         "the real risk is replication lag and WAL volume, not table-level blocking — batch large mutations",
     ),
     # --- heavy lock but INSTANT: the real risk is not the lock ---
     "add-non-nullable-without-default": LockImpact(
-        _AE, "instant — the statement fails on a populated table", "reads + writes (briefly)",
+        _AE,
+        "instant — the statement fails on a populated table",
+        "reads + writes (briefly)",
         "the real risk is the migration erroring out, not the lock",
     ),
     "drop-column-restricted": LockImpact(
-        _AE, "instant (catalog only)", "reads + writes (briefly)",
+        _AE,
+        "instant (catalog only)",
+        "reads + writes (briefly)",
         "the real risk is irreversible data loss, not the lock",
     ),
     "drop-table-restricted": LockImpact(
-        _AE, "instant", "reads + writes (briefly)", "the real risk is data loss, not the lock",
+        _AE,
+        "instant",
+        "reads + writes (briefly)",
+        "the real risk is data loss, not the lock",
     ),
     "constraint-dropped-warning": LockImpact(
-        _AE, "instant (catalog only)", "reads + writes (briefly)",
+        _AE,
+        "instant (catalog only)",
+        "reads + writes (briefly)",
         "the real risk is losing the invariant, not the lock",
     ),
     "truncate-cascade-banned": LockImpact(
-        _AE, "instant", "reads + writes", "the real risk is cascading data loss",
+        _AE,
+        "instant",
+        "reads + writes",
+        "the real risk is cascading data loss",
     ),
     "rename-column-warning": LockImpact(
-        _AE, "instant (catalog only)", "reads + writes (briefly)",
+        _AE,
+        "instant (catalog only)",
+        "reads + writes (briefly)",
         "the real risk is breaking application code, not the lock",
     ),
     "rename-table-warning": LockImpact(
-        _AE, "instant (catalog only)", "reads + writes (briefly)",
+        _AE,
+        "instant (catalog only)",
+        "reads + writes (briefly)",
         "the real risk is breaking application code, not the lock",
     ),
 }

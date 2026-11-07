@@ -63,7 +63,10 @@ def test_a_file_name_with_spaces_works_on_its_own_line(tmp_path, monkeypatch) ->
     monkeypatch.chdir(tmp_path)
     (tmp_path / "my migration.sql").write_text("SELECT 1;")
     (tmp_path / "b.sql").write_text("SELECT 1;")
-    assert _paths("my migration.sql\nb.sql\n") == [pathlib.Path("my migration.sql"), pathlib.Path("b.sql")]
+    assert _paths("my migration.sql\nb.sql\n") == [
+        pathlib.Path("my migration.sql"),
+        pathlib.Path("b.sql"),
+    ]
 
 
 def test_a_glob_with_spaces_matches_as_one_pattern(tmp_path, monkeypatch) -> None:
@@ -289,7 +292,9 @@ def test_each_report_uses_a_fresh_token(monkeypatch, capsys) -> None:
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     entrypoint._print_report("a\n")
     entrypoint._print_report("b\n")
-    starts = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("::stop-commands::")]
+    starts = [
+        ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("::stop-commands::")
+    ]
     assert len(set(starts)) == 2
 
 

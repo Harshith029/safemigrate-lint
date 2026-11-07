@@ -134,5 +134,3 @@ def _is_timestamp_without_tz(column_def: ast.ColumnDef) -> bool:
     # Postgres canonicalizes `timestamp without time zone` → 'timestamp',
     # and `timestamp with time zone` → 'timestamptz'.
     return last == _TIMESTAMP_TYPE_NAME
-
-

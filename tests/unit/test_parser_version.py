@@ -54,7 +54,10 @@ def test_the_dependency_pins_the_grammar_for_every_install() -> None:
 @pytest.mark.parametrize(
     ("label", "sql"),
     [
-        ("stored generated column", "CREATE TABLE t (a int, b int GENERATED ALWAYS AS (a*2) STORED);"),
+        (
+            "stored generated column",
+            "CREATE TABLE t (a int, b int GENERATED ALWAYS AS (a*2) STORED);",
+        ),
         ("identity column", "CREATE TABLE t (id int GENERATED ALWAYS AS IDENTITY);"),
         ("partitioned table", "CREATE TABLE t (a int) PARTITION BY RANGE (a);"),
         ("index concurrently", "CREATE INDEX CONCURRENTLY i ON t (c);"),

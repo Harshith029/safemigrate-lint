@@ -75,5 +75,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 f"-- ALTER TABLE {table} ALTER COLUMN {col_name} SET NOT NULL;"
             ),
         )
-
-

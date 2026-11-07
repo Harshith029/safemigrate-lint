@@ -53,9 +53,18 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
     # We approximate this by checking: is there any earlier statement of the same
     # "needs timeout" class in the preceding SQL? If yes, this isn't the first; skip.
     # Heuristic: look for any of these keywords earlier; if not present, this is first.
-    keywords_pattern = ("alter table", "create table", "drop table", "create index",
-                        "drop index", "update ", "delete from", "create trigger",
-                        "alter type", "reindex ")
+    keywords_pattern = (
+        "alter table",
+        "create table",
+        "drop table",
+        "create index",
+        "drop index",
+        "update ",
+        "delete from",
+        "create trigger",
+        "alter type",
+        "reindex ",
+    )
     if any(kw in preceding_sql for kw in keywords_pattern):
         return  # not the first
 

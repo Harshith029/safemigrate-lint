@@ -85,5 +85,3 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 f"PRIMARY KEY USING INDEX {constraint_name}_idx;"
             ),
         )
-
-

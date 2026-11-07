@@ -152,8 +152,7 @@ def _write_outputs(count: int, has_critical: bool) -> bool:
     output_file = os.environ.get("GITHUB_OUTPUT")
     if not output_file:
         print(
-            f"[outputs] findings-count={count} "
-            f"has-critical={'true' if has_critical else 'false'}",
+            f"[outputs] findings-count={count} has-critical={'true' if has_critical else 'false'}",
             file=sys.stderr,
         )
         return True
@@ -172,9 +171,7 @@ def _write_outputs(count: int, has_critical: bool) -> bool:
     return True
 
 
-def _run_cli(
-    files: list[str], severity: str, fmt: str
-) -> subprocess.CompletedProcess[str]:
+def _run_cli(files: list[str], severity: str, fmt: str) -> subprocess.CompletedProcess[str]:
     argv = [CLI_NAME, *files, f"--severity={severity}", f"--format={fmt}"]
     return subprocess.run(argv, capture_output=True, text=True, check=False)
 
@@ -358,12 +355,9 @@ def _post_or_edit_comment(ctx: dict, body_md: str) -> None:
     existing = _find_existing_comment(ctx)
     if existing is not None:
         url = (
-            f"https://api.github.com/repos/{ctx['owner']}/{ctx['repo']}"
-            f"/issues/comments/{existing}"
+            f"https://api.github.com/repos/{ctx['owner']}/{ctx['repo']}/issues/comments/{existing}"
         )
-        status, _, raw = _api_request(
-            "PATCH", url, ctx["token"], {"body": body_with_marker}
-        )
+        status, _, raw = _api_request("PATCH", url, ctx["token"], {"body": body_with_marker})
         if status in (200, 201):
             print(f"[comment] edited existing comment #{existing}", file=sys.stderr)
             return
@@ -379,9 +373,7 @@ def _post_or_edit_comment(ctx: dict, body_md: str) -> None:
         f"https://api.github.com/repos/{ctx['owner']}/{ctx['repo']}"
         f"/issues/{ctx['pr_number']}/comments"
     )
-    status, parsed, raw = _api_request(
-        "POST", url, ctx["token"], {"body": body_with_marker}
-    )
+    status, parsed, raw = _api_request("POST", url, ctx["token"], {"body": body_with_marker})
     if status in (200, 201):
         new_id = parsed.get("id") if isinstance(parsed, dict) else "?"
         print(f"[comment] posted new comment #{new_id}", file=sys.stderr)
@@ -394,18 +386,15 @@ def _post_or_edit_comment(ctx: dict, body_md: str) -> None:
             f"Response: {raw[:200]}"
         )
     else:
-        _err(
-            f"GitHub API returned {status} posting comment on PR "
-            f"#{ctx['pr_number']}: {raw[:200]}"
-        )
+        _err(f"GitHub API returned {status} posting comment on PR #{ctx['pr_number']}: {raw[:200]}")
 
 
 def _check_run_conclusion(count: int, has_critical: bool) -> str:
     """Map lint severity to a GitHub Check Run conclusion.
 
-      0 findings           -> success
-      any critical         -> action_required  (semantic "please look at this")
-      warnings/style only  -> neutral          (surfaced but non-blocking)
+    0 findings           -> success
+    any critical         -> action_required  (semantic "please look at this")
+    warnings/style only  -> neutral          (surfaced but non-blocking)
     """
     if count == 0:
         return "success"
@@ -438,18 +427,13 @@ def _check_run_output(count: int, findings: list[dict]) -> dict:
     }
 
 
-def _create_check_run(
-    ctx: dict, count: int, has_critical: bool, findings: list[dict]
-) -> None:
+def _create_check_run(ctx: dict, count: int, has_critical: bool, findings: list[dict]) -> None:
     """POST a Check Run for the PR head commit. Logs to stderr; API failures
     do not change the action's exit code. 403 gets a specific actionable
     message since missing `checks: write` permission is the common cause."""
     head_sha = ctx.get("head_sha")
     if not head_sha:
-        _err(
-            "pull_request.head.sha not found in event payload; "
-            "skipping Check Run creation."
-        )
+        _err("pull_request.head.sha not found in event payload; skipping Check Run creation.")
         return
 
     body = {
@@ -477,10 +461,7 @@ def _create_check_run(
             f"Response: {raw[:200]}"
         )
     else:
-        _err(
-            f"GitHub API returned {status} creating Check Run for "
-            f"{head_sha[:7]}: {raw[:200]}"
-        )
+        _err(f"GitHub API returned {status} creating Check Run for {head_sha[:7]}: {raw[:200]}")
 
 
 def main() -> int:
