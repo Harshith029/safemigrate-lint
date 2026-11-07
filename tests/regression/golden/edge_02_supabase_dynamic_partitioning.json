@@ -4,7 +4,7 @@
     "severity": "warning",
     "file": "edge_02_supabase_dynamic_partitioning.sql",
     "line": 63,
-    "column": 0,
+    "column": 1,
     "message": "CREATE FUNCTION app.create_chats_partition contains EXECUTE \u2014 the analyzer cannot see the dynamic SQL that will actually run.",
     "help": "PL/pgSQL bodies containing EXECUTE generate SQL at runtime from string expressions. Common patterns: EXECUTE format('CREATE TABLE %I ...', tbl_name), EXECUTE 'SELECT ' || dynamic_str. The analyzer can see the outer DO block / CREATE FUNCTION but not the SQL that EXECUTE will produce at runtime. Possible concerns: (a) format()'s %s vs %L vs %I confusion (use %I for identifiers, %L for literals \u2014 %s in a DDL context is a SQL-injection vector), (b) the generated DDL itself could be a problem rule we'd otherwise catch. Read the EXECUTE arguments by hand.",
     "suggested_fix": null
@@ -14,7 +14,7 @@
     "severity": "warning",
     "file": "edge_02_supabase_dynamic_partitioning.sql",
     "line": 77,
-    "column": 0,
+    "column": 1,
     "message": "CREATE FUNCTION app.create_chat_messages_partition contains EXECUTE \u2014 the analyzer cannot see the dynamic SQL that will actually run.",
     "help": "PL/pgSQL bodies containing EXECUTE generate SQL at runtime from string expressions. Common patterns: EXECUTE format('CREATE TABLE %I ...', tbl_name), EXECUTE 'SELECT ' || dynamic_str. The analyzer can see the outer DO block / CREATE FUNCTION but not the SQL that EXECUTE will produce at runtime. Possible concerns: (a) format()'s %s vs %L vs %I confusion (use %I for identifiers, %L for literals \u2014 %s in a DDL context is a SQL-injection vector), (b) the generated DDL itself could be a problem rule we'd otherwise catch. Read the EXECUTE arguments by hand.",
     "suggested_fix": null
@@ -24,7 +24,7 @@
     "severity": "warning",
     "file": "edge_02_supabase_dynamic_partitioning.sql",
     "line": 100,
-    "column": 0,
+    "column": 1,
     "message": "CREATE FUNCTION app.copy_chats_partition contains EXECUTE \u2014 the analyzer cannot see the dynamic SQL that will actually run.",
     "help": "PL/pgSQL bodies containing EXECUTE generate SQL at runtime from string expressions. Common patterns: EXECUTE format('CREATE TABLE %I ...', tbl_name), EXECUTE 'SELECT ' || dynamic_str. The analyzer can see the outer DO block / CREATE FUNCTION but not the SQL that EXECUTE will produce at runtime. Possible concerns: (a) format()'s %s vs %L vs %I confusion (use %I for identifiers, %L for literals \u2014 %s in a DDL context is a SQL-injection vector), (b) the generated DDL itself could be a problem rule we'd otherwise catch. Read the EXECUTE arguments by hand.",
     "suggested_fix": null
@@ -34,7 +34,7 @@
     "severity": "warning",
     "file": "edge_02_supabase_dynamic_partitioning.sql",
     "line": 122,
-    "column": 0,
+    "column": 1,
     "message": "CREATE FUNCTION app.copy_chat_messages_partition contains EXECUTE \u2014 the analyzer cannot see the dynamic SQL that will actually run.",
     "help": "PL/pgSQL bodies containing EXECUTE generate SQL at runtime from string expressions. Common patterns: EXECUTE format('CREATE TABLE %I ...', tbl_name), EXECUTE 'SELECT ' || dynamic_str. The analyzer can see the outer DO block / CREATE FUNCTION but not the SQL that EXECUTE will produce at runtime. Possible concerns: (a) format()'s %s vs %L vs %I confusion (use %I for identifiers, %L for literals \u2014 %s in a DDL context is a SQL-injection vector), (b) the generated DDL itself could be a problem rule we'd otherwise catch. Read the EXECUTE arguments by hand.",
     "suggested_fix": null
@@ -44,7 +44,7 @@
     "severity": "warning",
     "file": "edge_02_supabase_dynamic_partitioning.sql",
     "line": 142,
-    "column": 0,
+    "column": 1,
     "message": "CREATE FUNCTION app.index_and_attach_chats_partition contains EXECUTE \u2014 the analyzer cannot see the dynamic SQL that will actually run.",
     "help": "PL/pgSQL bodies containing EXECUTE generate SQL at runtime from string expressions. Common patterns: EXECUTE format('CREATE TABLE %I ...', tbl_name), EXECUTE 'SELECT ' || dynamic_str. The analyzer can see the outer DO block / CREATE FUNCTION but not the SQL that EXECUTE will produce at runtime. Possible concerns: (a) format()'s %s vs %L vs %I confusion (use %I for identifiers, %L for literals \u2014 %s in a DDL context is a SQL-injection vector), (b) the generated DDL itself could be a problem rule we'd otherwise catch. Read the EXECUTE arguments by hand.",
     "suggested_fix": null
@@ -54,7 +54,7 @@
     "severity": "warning",
     "file": "edge_02_supabase_dynamic_partitioning.sql",
     "line": 186,
-    "column": 0,
+    "column": 1,
     "message": "CREATE FUNCTION app.index_and_attach_chat_messages_partition contains EXECUTE \u2014 the analyzer cannot see the dynamic SQL that will actually run.",
     "help": "PL/pgSQL bodies containing EXECUTE generate SQL at runtime from string expressions. Common patterns: EXECUTE format('CREATE TABLE %I ...', tbl_name), EXECUTE 'SELECT ' || dynamic_str. The analyzer can see the outer DO block / CREATE FUNCTION but not the SQL that EXECUTE will produce at runtime. Possible concerns: (a) format()'s %s vs %L vs %I confusion (use %I for identifiers, %L for literals \u2014 %s in a DDL context is a SQL-injection vector), (b) the generated DDL itself could be a problem rule we'd otherwise catch. Read the EXECUTE arguments by hand.",
     "suggested_fix": null

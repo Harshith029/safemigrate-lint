@@ -27,9 +27,10 @@ RULE_ID = "concurrent-index-create-required"
     severity=Severity.WARNING,
     applies_to=(ast.IndexStmt,),
     doc=(
-        "CREATE INDEX without CONCURRENTLY acquires AccessExclusiveLock on the table for "
-        "the duration of the build, blocking writes. On large populated tables this can be "
-        "minutes. Use CREATE INDEX CONCURRENTLY (which cannot run inside a transaction)."
+        "CREATE INDEX without CONCURRENTLY holds a SHARE lock on the table for the whole "
+        "build: reads continue, but every INSERT, UPDATE and DELETE waits until the index "
+        "is built. On large populated tables this can be minutes. Use CREATE INDEX "
+        "CONCURRENTLY (which cannot run inside a transaction block)."
     ),
 )
 def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Finding]:
@@ -56,11 +57,12 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             f"{target or 'the target table'} for the duration of the build."
         ),
         help=(
-            "Non-concurrent CREATE INDEX takes AccessExclusiveLock for the full build duration. "
-            "On a populated table this blocks all writes (UPDATE/INSERT/DELETE) until the index "
-            "is built — minutes on a large table. CREATE INDEX CONCURRENTLY uses a slower but "
-            "non-blocking build path. It cannot run inside a transaction, so it must be its own "
-            "migration statement."
+            "Non-concurrent CREATE INDEX holds a SHARE lock on the table for the full build. "
+            "Reads keep working, but on a populated table every write (UPDATE/INSERT/DELETE) "
+            "waits until the index is built — minutes on a large table. CREATE INDEX "
+            "CONCURRENTLY takes SHARE UPDATE EXCLUSIVE instead, which blocks neither reads "
+            "nor writes, at the cost of a slower build. It cannot run inside a transaction "
+            "block, so it must be its own migration statement."
         ),
         suggested_fix=(
             f"CREATE INDEX CONCURRENTLY {idx_name if idx_name != '<unnamed>' else 'idx_name'} "

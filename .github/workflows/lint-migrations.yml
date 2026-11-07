@@ -18,13 +18,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Lint migration SQL
-        # Findings make the action exit non-zero; like the README tells users,
-        # don't fail the job on that — the safemigrate-lint Check Run is the signal.
-        continue-on-error: true
+        # The fixtures contain dangerous migrations on purpose, so findings must
+        # not fail this job — the safemigrate-lint Check Run is the signal.
+        # `fail-on: never` rather than continue-on-error: an input error (exit 2)
+        # still fails the job instead of being swallowed with the findings.
         uses: ./
         with:
           paths: 'fixtures/migrations/**/*.sql'
           severity: 'critical,warning'
           format: 'markdown'
+          fail-on: 'never'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

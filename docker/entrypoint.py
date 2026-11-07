@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """GitHub Action entrypoint for safemigrate-lint.
 
-Reads INPUT_PATHS / INPUT_SEVERITY / INPUT_FORMAT env vars (set by GitHub
-Actions for docker container actions), invokes the safemigrate-lint CLI via
-argv (no shell), prints results to the action log, and writes the
-findings-count + has-critical outputs to $GITHUB_OUTPUT.
+Reads INPUT_PATHS / INPUT_SEVERITY / INPUT_FORMAT / INPUT_FAIL-ON env vars (set
+by GitHub Actions for docker container actions), invokes the safemigrate-lint
+CLI via argv (no shell), prints results to the action log and the job summary,
+and writes the findings-count + has-critical outputs to $GITHUB_OUTPUT.
 
-Exit codes propagate the CLI's contract:
-  0 — no findings (after severity filter)
-  1 — findings present
+Exit codes follow the CLI's contract, with `fail-on` choosing what counts:
+  0 — nothing that `fail-on` fails on (always 0 for `never`)
+  1 — findings present: any (`any`, the default) or critical (`critical`)
   2 — input error (missing files, bad args, container misconfiguration)
+
+The exit status is the one result that survives a pull request from a fork.
+GitHub gives those runs a read-only token, so the PR comment and the Check Run
+can't be created there; the job's own status and summary still can.
 """
 
 from __future__ import annotations
@@ -17,6 +21,7 @@ from __future__ import annotations
 import glob
 import json
 import os
+import secrets
 import shutil
 import subprocess
 import sys
@@ -34,33 +39,110 @@ COMMENT_MARKER = "<!-- safemigrate-lint:comment-id -->"
 # each push gets a fresh check (no find-or-create needed).
 CHECK_RUN_NAME = "safemigrate-lint"
 
+# Values of the `fail-on` input: which findings make the step exit 1.
+FAIL_ON_CHOICES = ("any", "critical", "never")
+
+_FORK_HINT = (
+    "This pull request comes from a fork, and GitHub gives workflows on fork pull "
+    "requests a read-only token, so the {what} could not be created. The lint result "
+    "is still this step's exit status (see the `fail-on` input) and the job summary. "
+    "Gate merges on this job rather than on the `safemigrate-lint` Check Run, which "
+    "fork pull requests never receive. Don't switch to `pull_request_target` to get a "
+    "write token: that would run a contributor's SQL with write access."
+)
+
 
 def _err(msg: str) -> None:
     print(f"{CLI_NAME}: {msg}", file=sys.stderr)
+
+
+def _warn(msg: str) -> None:
+    """A workflow-command warning: shown on the run page, not just in the log."""
+    data = msg.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    print(f"::warning title={CLI_NAME}::{data}", flush=True)
 
 
 def _input(name: str, default: str = "") -> str:
     return os.environ.get(f"INPUT_{name.upper()}", default).strip()
 
 
+def _has_glob(pattern: str) -> bool:
+    return any(ch in pattern for ch in "*?[")
+
+
 def _expand_paths(paths_input: str) -> list[str]:
-    # GitHub multi-line inputs arrive as `\n`-separated; allow whitespace too
-    # so single-line `migrations/*.sql other/*.sql` also works.
-    tokens = [t for t in paths_input.replace("\n", " ").split() if t]
+    """Each line of `paths` is a path or glob. A line that matches nothing as
+    written is read as a whitespace-separated list of paths or globs instead.
+
+    So a file name containing spaces works on a line of its own, while a
+    single-line `migrations/*.sql other/*.sql` — or the README's changed-files
+    recipe, which joins names with spaces — works exactly as before.
+    """
     seen: set[str] = set()
     matched: list[str] = []
-    for token in tokens:
-        if any(ch in token for ch in "*?["):
-            hits = sorted(glob.glob(token, recursive=True))
-        else:
-            # Pass literals through unconditionally; the CLI's own "file not
-            # found" message is the actionable surface for typos.
-            hits = [token]
+    for line in paths_input.splitlines():
+        entry = line.strip()
+        if not entry:
+            continue
+        hits: list[str] = []
+        if any(ch.isspace() for ch in entry):
+            if _has_glob(entry):
+                hits = sorted(glob.glob(entry, recursive=True))
+            elif os.path.exists(entry):
+                hits = [entry]
+        if not hits:
+            for token in entry.split():
+                if _has_glob(token):
+                    hits.extend(sorted(glob.glob(token, recursive=True)))
+                else:
+                    # Pass literals through unconditionally; the CLI's own "file
+                    # not found" message is the actionable surface for typos.
+                    hits.append(token)
         for hit in hits:
             if hit not in seen:
                 seen.add(hit)
                 matched.append(hit)
     return matched
+
+
+def _exit_code(fail_on: str, count: int, has_critical: bool) -> int:
+    """The step's exit status once linting succeeded (input errors exit 2 earlier)."""
+    if fail_on == "never":
+        return 0
+    if fail_on == "critical":
+        return 1 if has_critical else 0
+    return 1 if count else 0
+
+
+def _print_report(text: str) -> None:
+    """Write report text that quotes migration SQL verbatim.
+
+    The runner reads any output line starting with `::` as a workflow command,
+    and the markdown report puts a migration's lines at the start of a line. A
+    contributor could otherwise plant `::error::`, `::add-mask::` and similar in
+    a migration and have the runner act on it, so command processing is paused
+    for the report (`::stop-commands::` with an unguessable token).
+    """
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        sys.stdout.write(text)
+        return
+    token = secrets.token_hex(16)
+    print(f"::stop-commands::{token}", flush=True)
+    sys.stdout.write(text if text.endswith("\n") else text + "\n")
+    print(f"::{token}::", flush=True)
+
+
+def _write_step_summary(body_md: str) -> None:
+    """Append the report to the job summary — readable on fork pull requests,
+    where the PR comment can't be posted."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY", "").strip()
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(_cap_comment(body_md))
+    except OSError as e:
+        _err(f"could not write the job summary ({path}): {e}")
 
 
 def _write_outputs(count: int, has_critical: bool) -> bool:
@@ -175,9 +257,17 @@ def _pr_context() -> dict | None:
     # head.sha is optional in this context — comment posting doesn't need it;
     # only Check Run creation does. The Check Run path surfaces its own error
     # when this is missing so the comment can still go through.
-    head_sha = pr.get("head", {}).get("sha")
+    head = pr.get("head") or {}
+    head_sha = head.get("sha")
     if not isinstance(head_sha, str) or not head_sha:
         head_sha = None
+
+    # A PR whose head lives in another repository gets a read-only token, so
+    # the comment and Check Run will be refused. Compared by name: `head.repo.fork`
+    # is also true for an ordinary PR inside a repo that is itself a fork, and a
+    # deleted fork has no head repo at all.
+    head_repo = (head.get("repo") or {}).get("full_name")
+    base_repo = ((pr.get("base") or {}).get("repo") or {}).get("full_name") or repo
 
     owner, name = repo.split("/", 1)
     return {
@@ -186,6 +276,7 @@ def _pr_context() -> dict | None:
         "repo": name,
         "pr_number": pr_number,
         "head_sha": head_sha,
+        "from_fork": head_repo != base_repo,
     }
 
 
@@ -294,6 +385,14 @@ def _post_or_edit_comment(ctx: dict, body_md: str) -> None:
     if status in (200, 201):
         new_id = parsed.get("id") if isinstance(parsed, dict) else "?"
         print(f"[comment] posted new comment #{new_id}", file=sys.stderr)
+    elif status == 403 and ctx.get("from_fork"):
+        _warn(_FORK_HINT.format(what="PR comment"))
+    elif status == 403:
+        _err(
+            "GitHub API returned 403 posting the PR comment — the workflow job "
+            "needs `permissions: { pull-requests: write }`. "
+            f"Response: {raw[:200]}"
+        )
     else:
         _err(
             f"GitHub API returned {status} posting comment on PR "
@@ -368,6 +467,8 @@ def _create_check_run(
             f"[check-run] created #{cr_id} (conclusion={body['conclusion']})",
             file=sys.stderr,
         )
+    elif status == 403 and ctx.get("from_fork"):
+        _warn(_FORK_HINT.format(what="`safemigrate-lint` Check Run"))
     elif status == 403:
         _err(
             "GitHub API returned 403 creating Check Run — the workflow job "
@@ -403,6 +504,10 @@ def main() -> int:
     if fmt not in ("json", "markdown"):
         _err(f"invalid format `{fmt}`. Allowed values: json, markdown.")
         return 2
+    fail_on = _input("fail-on", default="any").lower() or "any"
+    if fail_on not in FAIL_ON_CHOICES:
+        _err(f"invalid fail-on `{fail_on}`. Allowed values: {', '.join(FAIL_ON_CHOICES)}.")
+        return 2
 
     files = _expand_paths(paths_input)
     if not files:
@@ -435,27 +540,28 @@ def main() -> int:
 
     # Detect whether this run can post a PR comment.
     ctx = _pr_context()
+    has_summary = bool(os.environ.get("GITHUB_STEP_SUMMARY", "").strip())
 
-    # Render markdown once if we need it — either for the action log display
-    # or for the PR comment body. Avoids a third CLI invocation.
+    # Render markdown once if we need it — for the action log display, the job
+    # summary, or the PR comment body. Avoids a third CLI invocation.
     md_body: str | None = None
-    if fmt == "markdown" or ctx is not None:
+    if fmt == "markdown" or ctx is not None or has_summary:
         md_run = _run_cli(files, severity, "markdown")
         md_body = md_run.stdout
         if md_run.stderr:
             sys.stderr.write(md_run.stderr)
 
-    if fmt == "json":
-        sys.stdout.write(json_run.stdout)
-    else:
-        sys.stdout.write(md_body or "")
+    _print_report(json_run.stdout if fmt == "json" else md_body or "")
+
+    if md_body is not None:
+        _write_step_summary(md_body)
 
     if ctx is not None:
         if md_body is not None:
             _post_or_edit_comment(ctx, md_body)
         _create_check_run(ctx, count, has_critical, findings)
 
-    return json_run.returncode
+    return _exit_code(fail_on, count, has_critical)
 
 
 if __name__ == "__main__":

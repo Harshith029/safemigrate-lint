@@ -9,6 +9,7 @@ half-filled entry) and the end-to-end path from SQL to rendered output.
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -130,3 +131,60 @@ def test_markdown_summary_reports_the_heaviest_lock(tmp_path) -> None:
 def test_markdown_omits_the_summary_when_nothing_locks(tmp_path) -> None:
     md = render_markdown(_findings(tmp_path, "DROP DATABASE mydb;"), {})
     assert "Heaviest lock" not in md
+
+
+# --- the prose agrees with the table ----------------------------------------
+# concurrent-index-create-required's lock_impact said SHARE while its doc and
+# help said AccessExclusiveLock — two answers to one question, and the prose
+# was the wrong one. Lock modes named anywhere in a rule's doc or help must top
+# out at the lock the table reports. (tests/integration checks the table itself
+# against a real server.)
+
+_MODE = re.compile(
+    r"\b(AccessExclusiveLock|ShareRowExclusiveLock|ShareUpdateExclusiveLock|RowExclusiveLock"
+    r"|ExclusiveLock|ShareLock|RowShareLock|AccessShareLock"
+    r"|ACCESS EXCLUSIVE|SHARE ROW EXCLUSIVE|SHARE UPDATE EXCLUSIVE|ROW EXCLUSIVE|ROW SHARE"
+    r"|ACCESS SHARE|EXCLUSIVE|SHARE)\b"
+)
+
+
+def _mode(name: str) -> str:
+    """AccessExclusiveLock -> ACCESS EXCLUSIVE; already-spaced names pass through."""
+    if name.endswith("Lock"):
+        name = re.sub(r"(?<!^)(?=[A-Z])", " ", name.removesuffix("Lock"))
+    return name.upper()
+
+
+@pytest.mark.parametrize("rule_id", sorted(LOCK_IMPACT))
+def test_prose_names_no_stronger_lock_than_the_table(rule_id: str, tmp_path) -> None:
+    from .test_rules_fire import TRIGGERS
+
+    fired = [f for f in _findings(tmp_path, TRIGGERS[rule_id]) if f.rule_id == rule_id]
+    text = " ".join([RULES[rule_id].doc, *(f.help or "" for f in fired)])
+    named = {_mode(m.group(1)) for m in _MODE.finditer(text)}
+    if not named:
+        pytest.skip(f"{rule_id}'s prose names no lock mode")
+    strongest = max(named, key=lambda mode: _LOCK_RANK[mode])
+    assert strongest == LOCK_IMPACT[rule_id].lock, (
+        f"{rule_id}: prose names {sorted(named)}, table says {LOCK_IMPACT[rule_id].lock}"
+    )
+
+
+def test_create_index_says_reads_continue(tmp_path) -> None:
+    (finding,) = [
+        f
+        for f in _findings(tmp_path, "CREATE INDEX idx ON t (c);")
+        if f.rule_id == "concurrent-index-create-required"
+    ]
+    assert finding.lock_impact is not None and finding.lock_impact.lock == "SHARE"
+    assert finding.help is not None and "SHARE lock" in finding.help
+    assert "Reads keep working" in finding.help
+    assert "AccessExclusive" not in finding.help + RULES["concurrent-index-create-required"].doc
+
+
+def test_refresh_concurrently_is_not_said_to_need_its_own_transaction(tmp_path) -> None:
+    """It runs fine inside a transaction block — verified on a real server."""
+    rule_id = "refresh-matview-blocks-reads"
+    (finding,) = [f for f in _findings(tmp_path, "REFRESH MATERIALIZED VIEW m;") if f.rule_id == rule_id]
+    text = " ".join([RULES[rule_id].doc, finding.help or "", LOCK_IMPACT[rule_id].note])
+    assert "transaction block" not in text

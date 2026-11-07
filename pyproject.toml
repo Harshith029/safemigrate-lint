@@ -39,7 +39,14 @@ classifiers = [
     "Topic :: Software Development :: Testing",
 ]
 dependencies = [
-    "pglast>=6.0",
+    # One pglast major is one Postgres grammar: pglast 7 vendors PostgreSQL 17's
+    # parser, pglast 8 PostgreSQL 18's. Capped so a PyPI install, the pre-commit
+    # hook and the Action image all parse the grammar the README documents —
+    # `>=6.0` let a fresh install pick up pglast 8 and a different grammar.
+    # Moving to the next major is a deliberate change: see
+    # tests/unit/test_parser_version.py. 7.20 is the oldest 7.x PyPI still
+    # serves, and CI tests both ends of the range.
+    "pglast>=7.20,<8",
 ]
 
 [project.urls]
@@ -79,6 +86,12 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.6",
     "mypy>=1.10",
+]
+# tests/integration: checks lock and remediation claims against a real
+# PostgreSQL. Skipped unless SAFEMIGRATE_TEST_PG_DSN is set; CI's `postgres`
+# job runs it against each supported major.
+integration = [
+    "psycopg[binary]>=3.2",
 ]
 
 [tool.ruff]

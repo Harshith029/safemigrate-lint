@@ -18,6 +18,14 @@ inputs:
     description: 'Output format for the action log: json or markdown.'
     required: false
     default: 'json'
+  fail-on:
+    description: >-
+      Which findings fail the step: any (the default), critical, or never.
+      With `critical` and no continue-on-error, the job itself is a merge
+      gate that also works on pull requests from forks, which get a read-only
+      token and so never receive the PR comment or Check Run.
+    required: false
+    default: 'any'
 
 outputs:
   findings-count:

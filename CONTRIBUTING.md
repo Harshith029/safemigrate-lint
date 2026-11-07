@@ -32,6 +32,7 @@ src/safemigrate_lint/
   cli.py              # argv entry point, severity filtering, exit codes
   core/
     parser.py         # pglast (libpg_query) parse → statements
+    location.py       # 1-based line/column for statements and parse errors
     state.py          # cross-statement MigrationState + StateBuilder
     engine.py         # dispatch each statement to applicable rules
     finding.py        # Finding dataclass + Severity enum
@@ -45,6 +46,7 @@ src/safemigrate_lint/
 docker/entrypoint.py  # GitHub Action wrapper around the CLI
 fixtures/migrations/  # corpus *.sql (dangerous_/subtle_/edge_/safe_ prefixes)
 tests/regression/     # golden JSON + corpus harness
+tests/integration/    # lock + suggested-fix claims, run on a real PostgreSQL
 ```
 
 ## Dev setup
@@ -67,6 +69,21 @@ uv run mypy src               # type-check
 ```
 
 CI runs the same three on every PR.
+
+Claims about PostgreSQL itself — the lock each finding reports, what may run in
+a transaction block, whether a suggested fix works — are checked against a real
+server in `tests/integration`, which is skipped unless you point it at a
+**disposable** database (it creates and drops schemas):
+
+```bash
+docker run -d --name pg17 -e POSTGRES_HOST_AUTH_METHOD=trust -p 127.0.0.1:5432:5432 postgres:17
+uv sync --group integration
+SAFEMIGRATE_TEST_PG_DSN=postgresql://postgres@127.0.0.1:5432/postgres uv run pytest tests/integration
+```
+
+CI's `postgres` job runs it against every supported major (14–18), and its
+`dependency-range` job tests the oldest and newest pglast that pyproject allows,
+since that range — not uv.lock — is what PyPI and pre-commit installs get.
 
 ## Adding or changing a rule
 

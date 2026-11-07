@@ -61,6 +61,21 @@ def _md_escape(text: str) -> str:
     return _MD_SPECIAL.sub(lambda m: "\\" + m.group(0), _one_line(text))
 
 
+def _code_span(text: str) -> str:
+    """Inline code that `text` can't break out of.
+
+    File names come from the pull request too, and may contain backticks or
+    even newlines. Newlines are collapsed, and the delimiter is one backtick
+    longer than any run inside (padded when the text starts or ends with one),
+    so the span always closes where it should.
+    """
+    text = _one_line(text)
+    longest = max((len(m.group(0)) for m in _BACKTICK_RUN.finditer(text)), default=0)
+    fence = "`" * (longest + 1)
+    pad = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{pad}{text}{pad}{fence}"
+
+
 def _fenced(content: str, lang: str = "sql") -> list[str]:
     """Fence a block with more backticks than the content's longest run.
 
@@ -122,7 +137,7 @@ def render_markdown(findings: Iterable[Finding], source_by_file: dict[str, str])
         lines.append("")
         # Location header
         file_display = Path(f.file).name if "/" in f.file or "\\" in f.file else f.file
-        lines.append(f"`{file_display}:{f.line}:{f.column}`")
+        lines.append(_code_span(f"{file_display}:{f.line}:{f.column}"))
         lines.append("")
         lines.append(f"> {_md_escape(f.message)}")
         lines.append("")

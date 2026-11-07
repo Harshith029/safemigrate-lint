@@ -66,8 +66,12 @@ def test_truncation_cuts_at_a_finding_boundary_when_it_can() -> None:
     body = section * (entrypoint._MAX_COMMENT_CHARS // len(section) + 50)
     capped = entrypoint._cap_comment(body)
     assert len(capped) <= entrypoint._MAX_COMMENT_CHARS
-    # Nothing should be left dangling mid-section before the note.
-    assert capped.split("\n\n---\n\n_Report truncated")[0].endswith("---") or True
+    kept, note, rest = capped.partition(entrypoint._TRUNCATION_NOTE)
+    assert note and rest == "", "the truncation note must close the comment"
+    # Cut at the end of a whole finding: nothing dangling mid-section before
+    # the note, and every heading kept still has its message.
+    assert kept.rstrip().endswith("> msg")
+    assert kept.count("### ") == kept.count("> msg")
     assert capped.count("```") % 2 == 0
 
 

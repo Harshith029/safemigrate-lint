@@ -25,6 +25,8 @@ import bisect
 import re
 from typing import Any
 
+from .location import skip_trivia
+
 # Matches a line that is JUST a safemigrate:ignore comment. Whitespace allowed
 # at start; rule list is word-chars + hyphens; reason is optional.
 _IGNORE_RE = re.compile(
@@ -39,7 +41,7 @@ def parse_inline_ignores(
     """For each parsed statement, identify which rule IDs are suppressed by an
     immediately-preceding inline `-- safemigrate:ignore=...` comment.
 
-    Returns a mapping from statement_offset (1-indexed byte offset, matching
+    Returns a mapping from statement_offset (1-based character offset, matching
     `RuleContext.statement_offset`) to a frozenset of suppressed rule IDs.
     Empty mapping if `statements` is None (parse failed) or no ignores found.
     """
@@ -58,10 +60,10 @@ def parse_inline_ignores(
 
         # pglast reports stmt_location at the END of the previous statement (just
         # after its `;`), so raw_offset can sit on the prior statement's line.
-        # Advance past whitespace and line comments to the real keyword before
+        # Advance past whitespace and comments to the real keyword before
         # locating its line — otherwise we'd scan back from the wrong statement
         # and miss an ignore comment placed between two statements.
-        keyword_offset = _advance_to_keyword(sql, raw_offset)
+        keyword_offset = skip_trivia(sql, raw_offset)
         stmt_line_idx = _line_index_for_offset(line_starts, keyword_offset)
 
         # Walk backwards from the line before the statement, skipping blank lines,
@@ -74,7 +76,7 @@ def parse_inline_ignores(
 
 
 def _line_start_offsets(sql: str) -> list[int]:
-    """Byte offset of the first character of each line. line 0 always at offset 0."""
+    """Character offset of the first character of each line. Line 0 is at 0."""
     offsets = [0]
     idx = sql.find("\n")
     while idx != -1:
@@ -83,29 +85,8 @@ def _line_start_offsets(sql: str) -> list[int]:
     return offsets
 
 
-def _advance_to_keyword(sql: str, offset: int) -> int:
-    """Advance from `offset` past whitespace and `-- line comments` to the first
-    real token. Mirrors `RuleContext.line_col`: pglast points a statement's
-    location at the end of the previous statement, so this lands on the actual
-    statement keyword. Block comments (`/* ... */`) are uncommon in migrations
-    and not handled."""
-    n = len(sql)
-    offset = max(0, offset)
-    while offset < n:
-        ch = sql[offset]
-        if ch in " \t\r\n":
-            offset += 1
-            continue
-        if ch == "-" and offset + 1 < n and sql[offset + 1] == "-":
-            nl = sql.find("\n", offset)
-            offset = n if nl == -1 else nl + 1
-            continue
-        break
-    return offset
-
-
 def _line_index_for_offset(line_starts: list[int], offset: int) -> int:
-    """Return the 0-indexed line that contains the given byte offset. Statements
+    """Return the 0-indexed line that contains the given character offset. Statements
     whose pglast offset points at leading whitespace will land on the line
     BEFORE the keyword; we advance past blank lines in the caller."""
     # line_starts is sorted ascending, so the containing line is the last start

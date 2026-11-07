@@ -11,12 +11,19 @@ documents the known gap rather than letting users discover it in a failing PR.
 
 from __future__ import annotations
 
+import pathlib
+import re
+import tomllib
+
 import pglast
 import pytest
 
 from safemigrate_lint.core.parser import POSTGRES_GRAMMAR_VERSION, parse_string
 
 EXPECTED_MAJOR = 17
+# pglast N vendors Postgres N+10's grammar (pglast 7 -> PG 17, pglast 8 -> PG 18).
+PGLAST_MAJOR = EXPECTED_MAJOR - 10
+_PYPROJECT = pathlib.Path(__file__).resolve().parents[2] / "pyproject.toml"
 
 
 def test_grammar_version_is_pinned() -> None:
@@ -30,6 +37,18 @@ def test_grammar_version_is_pinned() -> None:
 
 def test_reported_version_matches_pglast() -> None:
     assert POSTGRES_GRAMMAR_VERSION == tuple(pglast.get_postgresql_version())
+
+
+def test_the_dependency_pins_the_grammar_for_every_install() -> None:
+    """The lockfile only governs the Action image. A PyPI or pre-commit install
+    resolves from pyproject, and `pglast>=6.0` let it pick pglast 8 — a
+    PostgreSQL 18 grammar this suite would reject. The range must stay inside
+    one pglast major, the one whose grammar is pinned above."""
+    deps = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))["project"]["dependencies"]
+    (spec,) = [d.replace(" ", "") for d in deps if re.match(r"pglast\b", d)]
+    assert f"<{PGLAST_MAJOR + 1}" in spec, spec
+    assert re.search(rf">={PGLAST_MAJOR}(\.|,|$)", spec), spec
+    assert int(pglast.__version__.lstrip("v").split(".")[0]) == PGLAST_MAJOR
 
 
 @pytest.mark.parametrize(
