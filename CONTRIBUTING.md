@@ -65,10 +65,12 @@ uv sync                       # creates .venv, installs deps + dev tools
 ```bash
 uv run pytest                 # unit + golden-corpus regression
 uv run ruff check .           # lint
+uv run ruff format --check .  # formatting (`uv run ruff format .` fixes it)
 uv run mypy src               # type-check
+uv run pytest --cov           # coverage; fails below the 90% floor in pyproject.toml
 ```
 
-CI runs the same three on every PR.
+CI runs the same checks on every PR.
 
 Claims about PostgreSQL itself — the lock each finding reports, what may run in
 a transaction block, whether a suggested fix works — are checked against a real
