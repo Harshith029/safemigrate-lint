@@ -32,11 +32,15 @@ jobs:
       - name: Lint with ruff
         run: uv run --python ${{ matrix.python-version }} ruff check src/ tests/ docker/
 
+      - name: Check formatting with ruff
+        run: uv run --python ${{ matrix.python-version }} ruff format --check src/ tests/ docker/
+
       - name: Type-check with mypy
         run: uv run --python ${{ matrix.python-version }} mypy src/ docker/
 
-      - name: Run tests
-        run: uv run --python ${{ matrix.python-version }} pytest -v
+      - name: Run tests with coverage
+        # Fails below the fail_under floor in pyproject.toml ([tool.coverage.report]).
+        run: uv run --python ${{ matrix.python-version }} pytest -v --cov=safemigrate_lint --cov-report=term-missing
 
   # uv.lock only governs the Action image. A PyPI or pre-commit install resolves
   # pglast from pyproject's range instead — which once let a fresh install pick a

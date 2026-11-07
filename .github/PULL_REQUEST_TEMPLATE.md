@@ -2,8 +2,8 @@
 
 ## Checklist
 
-- [ ] `uv run pytest` passes
-- [ ] `uv run ruff check src/ tests/ docker/` and `uv run mypy src/ docker/` are clean
+- [ ] `uv run pytest --cov` passes (coverage stays at or above the 90% floor)
+- [ ] `uv run ruff check src/ tests/ docker/`, `uv run ruff format --check src/ tests/ docker/` and `uv run mypy src/ docker/` are clean
 - [ ] If rule output changed: regenerated goldens (`uv run pytest --update-golden`) and reviewed the diff
 - [ ] New rule? Added a fixture that fires **and** a `safe_` case that doesn't, plus a trigger in `tests/unit/test_rules_fire.py`
 
