@@ -7,6 +7,25 @@ and write the result. Holds AccessExclusiveLock for the duration.
 
 Atlas PG310 fires only on ALTER (not inline CREATE TABLE). Our state machine
 suppresses same-migration tables.
+
+The suggested fix is a four-step migration that never rewrites the table, run
+end to end against real PostgreSQL 14, 17 and 18 (tests/integration). Each
+step is there because leaving it out fails or corrupts data:
+
+* `ADD GENERATED ... AS IDENTITY` requires the column to be NOT NULL and to
+  have no default. NOT NULL comes from a validated CHECK first, so SET NOT NULL
+  doesn't rescan the table under ACCESS EXCLUSIVE, and the default is dropped
+  in the same transaction that adds the identity.
+* Adding the identity creates a fresh sequence starting at 1. Without the
+  `setval`, the next insert reuses an id the backfill already handed out.
+* Rows inserted while the backfill runs take the sequence default, so they are
+  numbered too instead of failing the NOT NULL check.
+* UPDATE has no ORDER BY/LIMIT in Postgres, so batches pick rows by ctid.
+
+An earlier version suggested backfilling from a separate sequence and then
+adding the identity directly. On a real server that statement fails (the
+column isn't NOT NULL), and once NOT NULL is added it silently numbers new
+rows from 1 again — duplicate ids.
 """
 
 from __future__ import annotations
@@ -16,6 +35,7 @@ from typing import Any
 
 from pglast import ast
 from pglast.enums import AlterTableType, ConstrType
+from pglast.stream import RawStream
 
 from ..core.ast_utils import table_name
 from ..core.finding import Finding, Severity
@@ -32,9 +52,10 @@ RULE_ID = "identity-column-add-rewrites"
     doc=(
         "ALTER TABLE ADD COLUMN ... GENERATED [ALWAYS|BY DEFAULT] AS IDENTITY on an "
         "existing table rewrites every row to assign unique sequence values, under "
-        "AccessExclusiveLock. Use ADD COLUMN nullable + backfill + ALTER COLUMN ADD "
-        "GENERATED ALWAYS AS IDENTITY as a multi-step alternative on large tables. "
-        "Matches Atlas PG310."
+        "AccessExclusiveLock. On large tables, add a nullable column numbered by a "
+        "sequence default, backfill it in batches, make it NOT NULL via a validated "
+        "CHECK, then swap the default for the identity and move the identity's "
+        "sequence past the backfilled values. Matches Atlas PG310."
     ),
 )
 def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Finding]:
@@ -55,7 +76,8 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         column_def = cmd.def_
         if not isinstance(column_def, ast.ColumnDef):
             continue
-        if not _has_identity_constraint(column_def):
+        identity = _identity_constraint(column_def)
+        if identity is None:
             continue
 
         col_name = column_def.colname or "<unnamed>"
@@ -74,29 +96,76 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
                 "Identity columns require Postgres to assign a unique sequence value "
                 "to every existing row, which means a full table rewrite under "
                 "AccessExclusiveLock. On large tables this blocks reads and writes "
-                "for minutes. The non-blocking alternative: ADD COLUMN nullable, "
-                "backfill in batched UPDATEs using nextval('seq_name'), then ALTER "
-                "COLUMN ADD GENERATED ALWAYS AS IDENTITY (which is catalog-only)."
+                "for minutes. The non-rewriting alternative takes four steps: add the "
+                "column nullable with a sequence default, backfill existing rows in "
+                "committed batches, make it NOT NULL through a validated CHECK, then "
+                "in one transaction drop the default, add the identity, and setval its "
+                "sequence past every backfilled value. Skipping the NOT NULL step makes "
+                "ADD GENERATED fail; skipping the setval makes new rows reuse ids."
             ),
-            suggested_fix=(
-                f"-- Multi-step pattern:\n"
-                f"CREATE SEQUENCE {table}_{col_name}_seq;\n"
-                f"ALTER TABLE {table} ADD COLUMN {col_name} bigint;\n"
-                f"-- Backfill in batches:\n"
-                f"--   UPDATE {table} SET {col_name} = nextval('{table}_{col_name}_seq') "
-                f"WHERE {col_name} IS NULL ORDER BY <pk> LIMIT N;\n"
-                f"ALTER TABLE {table} ALTER COLUMN {col_name} "
-                f"ADD GENERATED ALWAYS AS IDENTITY;"
+            suggested_fix=_non_rewriting_fix(
+                table or "<table>", col_name, _type_sql(column_def), _identity_sql(identity)
             ),
         )
 
 
-def _has_identity_constraint(column_def: ast.ColumnDef) -> bool:
+def _identity_constraint(column_def: ast.ColumnDef) -> ast.Constraint | None:
     for constraint in column_def.constraints or ():
-        if not isinstance(constraint, ast.Constraint):
-            continue
-        if constraint.contype == ConstrType.CONSTR_IDENTITY:
-            return True
-    return False
+        if isinstance(constraint, ast.Constraint) and constraint.contype == ConstrType.CONSTR_IDENTITY:
+            return constraint
+    return None
 
 
+def _type_sql(column_def: ast.ColumnDef) -> str:
+    """The column's declared type, as SQL — the fix keeps whatever was asked for."""
+    try:
+        return RawStream()(column_def.typeName) or "bigint"
+    except Exception:  # an unprintable type is no reason to drop the finding
+        return "bigint"
+
+
+def _identity_sql(identity: ast.Constraint) -> str:
+    """`GENERATED {ALWAYS|BY DEFAULT} AS IDENTITY[(options)]`, as written, minus
+    any constraint name — ALTER COLUMN ... ADD GENERATED has no slot for one."""
+    clause = ast.Constraint(
+        contype=ConstrType.CONSTR_IDENTITY,
+        generated_when=identity.generated_when,
+        options=identity.options,
+    )
+    try:
+        return RawStream()(clause)
+    except Exception:
+        kind = "BY DEFAULT" if identity.generated_when == "d" else "ALWAYS"
+        return f"GENERATED {kind} AS IDENTITY"
+
+
+def _non_rewriting_fix(table: str, column: str, type_sql: str, identity_sql: str) -> str:
+    schema, _, bare = table.rpartition(".")
+    seq = f"{schema + '.' if schema else ''}{bare}_{column}_backfill_seq"
+    check_name = f"{bare}_{column}_not_null"  # constraint names can't be schema-qualified
+    return (
+        "-- Non-rewriting alternative. Run each numbered step as its own migration.\n"
+        "-- 1. Catalog-only: a nullable column that new rows number from a sequence.\n"
+        f"CREATE SEQUENCE {seq};\n"
+        f"ALTER TABLE {table} ADD COLUMN {column} {type_sql};\n"
+        f"ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT nextval('{seq}');\n"
+        "-- 2. Number existing rows one batch per transaction, committing after\n"
+        "--    each, until this updates 0 rows.\n"
+        f"UPDATE {table} SET {column} = nextval('{seq}')\n"
+        f"WHERE ctid IN (SELECT ctid FROM {table} WHERE {column} IS NULL LIMIT 10000);\n"
+        "-- 3. Identity requires NOT NULL. A validated CHECK lets SET NOT NULL skip\n"
+        "--    its full-table scan under ACCESS EXCLUSIVE (PostgreSQL 12+).\n"
+        f"ALTER TABLE {table} ADD CONSTRAINT {check_name} CHECK ({column} IS NOT NULL) NOT VALID;\n"
+        f"ALTER TABLE {table} VALIDATE CONSTRAINT {check_name};\n"
+        f"ALTER TABLE {table} ALTER COLUMN {column} SET NOT NULL;\n"
+        f"ALTER TABLE {table} DROP CONSTRAINT {check_name};\n"
+        "-- 4. In ONE transaction (omit BEGIN/COMMIT if your runner wraps each\n"
+        "--    migration in one): swap the default for the identity and continue\n"
+        "--    numbering past every value already assigned.\n"
+        "BEGIN;\n"
+        f"ALTER TABLE {table} ALTER COLUMN {column} DROP DEFAULT;\n"
+        f"ALTER TABLE {table} ALTER COLUMN {column} ADD {identity_sql};\n"
+        f"SELECT setval(pg_get_serial_sequence('{table}', '{column}'), nextval('{seq}'));\n"
+        "COMMIT;\n"
+        f"DROP SEQUENCE {seq};"
+    )

@@ -5,8 +5,10 @@ DROP INDEX acquires AccessExclusiveLock on the underlying table, blocking both
 reads and writes for the duration. On a hot table, even a short lock can cause
 cascading queue effects.
 
-Suppressed when the index was created in the same migration (transient indexes
-in a single migration won't hit production load).
+Suppressed when the index was created earlier in the same migration (transient
+indexes in a single migration won't hit production load). "The same index"
+means the same schema-qualified identity — an index lives in its table's
+schema — so a same-named index created in another schema vouches for nothing.
 """
 
 from __future__ import annotations
@@ -17,9 +19,9 @@ from typing import Any
 from pglast import ast
 from pglast.enums import ObjectType
 
-from ..core.ast_utils import bare, qualified_name
+from ..core.ast_utils import qualified_name
 from ..core.finding import Finding, Severity
-from ..core.state import MigrationState
+from ..core.state import MigrationState, index_created_in_migration
 from ._registry import RuleContext, register_rule
 
 RULE_ID = "concurrent-index-drop-required"
@@ -48,9 +50,11 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
     for obj in stmt.objects or ():
         index_name = qualified_name(obj)
 
-        # Suppress if the index was created in this same migration — transient
-        # within-migration indexes don't see production load during the lock.
-        if index_name and bare(index_name) in {bare(i) for i in state.indexes_created}:
+        # Suppress if this exact index was created earlier in this migration —
+        # transient within-migration indexes don't see production load during
+        # the lock. Matching on the bare name let `audit.idx` vouch for
+        # `public.idx`.
+        if index_name and index_created_in_migration(state, index_name):
             continue
 
         yield Finding(

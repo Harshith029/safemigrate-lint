@@ -1,10 +1,12 @@
 """concurrent-reindex-required — REINDEX without CONCURRENTLY locks the table.
 
 Fires WARNING on `REINDEX TABLE foo` / `REINDEX INDEX idx` that omits the
-CONCURRENTLY clause. Plain REINDEX takes AccessExclusiveLock for the duration
-of the rebuild — minutes on a large table, blocking all reads and writes.
-REINDEX CONCURRENTLY (Postgres 12+) builds a parallel index and swaps it,
-with no write block.
+CONCURRENTLY clause. Plain REINDEX holds ACCESS EXCLUSIVE on each index it
+rebuilds and SHARE on the table, for the whole rebuild. SHARE blocks writes;
+and because the planner locks every index of a table to plan a query on it,
+reads stall too — measured on a real server, a read that didn't use the index
+being rebuilt still waited. REINDEX CONCURRENTLY (Postgres 12+) builds a
+replacement index and swaps it in, blocking neither.
 """
 
 from __future__ import annotations
@@ -26,10 +28,11 @@ RULE_ID = "concurrent-reindex-required"
     severity=Severity.WARNING,
     applies_to=(ast.ReindexStmt,),
     doc=(
-        "REINDEX without CONCURRENTLY takes AccessExclusiveLock on the table for the "
-        "rebuild duration — minutes on a large table, blocking reads and writes. "
-        "Postgres 12+ supports REINDEX CONCURRENTLY which builds in the background "
-        "without blocking writes. Use it on production tables."
+        "REINDEX without CONCURRENTLY holds ACCESS EXCLUSIVE on the index being rebuilt "
+        "and SHARE on its table for the whole rebuild — minutes on a large table. Writes "
+        "wait, and since planning any query on the table locks all of its indexes, reads "
+        "stall too. Postgres 12+ supports REINDEX CONCURRENTLY, which blocks neither. "
+        "Use it on production tables."
     ),
 )
 def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Finding]:
@@ -50,12 +53,14 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             "the duration of the rebuild."
         ),
         help=(
-            "Plain REINDEX rebuilds the index in place under AccessExclusiveLock on "
-            "the underlying table — minutes on a large table, blocking all queries. "
-            "REINDEX CONCURRENTLY (added in Postgres 12) builds a new index "
-            "in parallel, then atomically swaps it in. The CONCURRENTLY path is "
-            "slower but doesn't block writes. Use it on any table that gets "
-            "production traffic."
+            "Plain REINDEX rebuilds the index in place, holding ACCESS EXCLUSIVE on the "
+            "index and SHARE on its table until it finishes — minutes on a large table. "
+            "SHARE blocks writes, and reads stall too, because planning a query on the "
+            "table needs a lock on every one of its indexes. REINDEX CONCURRENTLY "
+            "(added in Postgres 12) builds a new index alongside, then swaps it in. "
+            "It is slower but blocks neither reads nor writes; like other CONCURRENTLY "
+            "forms it cannot run inside a transaction block. Use it on any table that "
+            "gets production traffic."
         ),
         suggested_fix=(
             "-- Postgres 12+:\n"

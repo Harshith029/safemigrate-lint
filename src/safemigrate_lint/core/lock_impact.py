@@ -99,8 +99,10 @@ LOCK_IMPACT: dict[str, LockImpact] = {
         _AE, "brief", "reads + writes",
         "safe path: DROP INDEX CONCURRENTLY — ShareUpdateExclusive",
     ),
+    # ACCESS EXCLUSIVE is on the index; the table gets SHARE. Reads still stall:
+    # planning any query on the table locks every one of its indexes.
     "concurrent-reindex-required": LockImpact(
-        _AE, "for the whole rebuild", "writes (and reads using this index)",
+        _AE, "for the whole rebuild", "reads + writes (via the index lock)",
         "safe path: REINDEX ... CONCURRENTLY",
     ),
     "concurrent-partition-detach-required": LockImpact(
@@ -110,8 +112,7 @@ LOCK_IMPACT: dict[str, LockImpact] = {
     "trigger-add-blocks-writes": LockImpact("SHARE ROW EXCLUSIVE", "brief", "writes (reads still OK)"),
     "refresh-matview-blocks-reads": LockImpact(
         _AE, "for the whole refresh", "reads of the view",
-        "safe path: REFRESH ... CONCURRENTLY — needs a UNIQUE index on the matview, "
-        "and can't run inside a transaction block",
+        "safe path: REFRESH ... CONCURRENTLY — needs a UNIQUE index on the matview",
     ),
     # --- row-level mutation: light table lock, but a long transaction ---
     "update-delete-row-scope": LockImpact(

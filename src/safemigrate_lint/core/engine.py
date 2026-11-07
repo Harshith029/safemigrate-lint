@@ -39,8 +39,9 @@ def analyze(result: ParseResult, state: MigrationState) -> list[Finding]:
     findings: list[Finding] = []
     for raw_stmt in result.statements:
         inner = getattr(raw_stmt, "stmt", raw_stmt)
-        # pglast's RawStmt.stmt_location is 0-indexed byte offset; convert to 1-indexed
-        # to match conventional file positions.
+        # pglast's RawStmt.stmt_location is a 0-based character offset (pglast
+        # converts libpg_query's byte offsets); +1 makes the 1-based key that
+        # RuleContext, the state prepass and inline suppressions share.
         raw_offset = getattr(raw_stmt, "stmt_location", None) or 0
         offset = raw_offset + 1 if raw_offset is not None else 1
         ctx = RuleContext(file=result.file, sql=result.sql, statement_offset=offset)

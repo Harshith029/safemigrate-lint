@@ -60,7 +60,10 @@ print(type(stmt).__name__, stmt.concurrent, stmt.relation.relname)
 # -> RefreshMatViewStmt True foo
 ```
 
-So: node `ast.RefreshMatViewStmt`, boolean `.concurrent`, and `.relation.relname`.
+So: node `ast.RefreshMatViewStmt`, boolean `.concurrent`, and `.relation` — a
+`RangeVar`. Read its name with `table_name(stmt.relation)`, which keeps the
+schema (`audit.foo`); `.relname` alone drops it, and two relations that differ
+only by schema must never be confused.
 
 ## Step 2 — write the rule file
 
@@ -71,8 +74,8 @@ So: node `ast.RefreshMatViewStmt`, boolean `.concurrent`, and `.relation.relname
 CONCURRENTLY locks the matview against reads for the whole refresh.
 
 Suppressed when the matview was created in this same migration (no readers yet).
-CONCURRENTLY requires a UNIQUE index on the matview and can't run in a
-transaction block — note that in the help, don't blindly auto-fix.
+CONCURRENTLY requires a UNIQUE index on the matview — note that in the help,
+don't blindly auto-fix.
 """
 
 from __future__ import annotations
@@ -82,6 +85,7 @@ from typing import Any
 
 from pglast import ast
 
+from ..core.ast_utils import table_name
 from ..core.finding import Finding, Severity
 from ..core.state import MigrationState, table_created_in_migration
 from ._registry import RuleContext, register_rule
@@ -97,7 +101,7 @@ RULE_ID = "refresh-matview-blocks-reads"
         "REFRESH MATERIALIZED VIEW without CONCURRENTLY takes an ACCESS EXCLUSIVE "
         "lock, blocking all reads of the view until the refresh completes. "
         "REFRESH ... CONCURRENTLY updates it without blocking readers (requires a "
-        "UNIQUE index on the matview and cannot run inside a transaction block)."
+        "UNIQUE index on the matview)."
     ),
 )
 def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Finding]:
@@ -106,7 +110,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
     if stmt.concurrent:
         return  # already non-blocking
 
-    name = stmt.relation.relname if stmt.relation else "<unknown>"
+    name = table_name(stmt.relation)  # schema-qualified when written that way
 
     # Suppress: a matview created in this same migration has no readers to block.
     if name and table_created_in_migration(state, name):
@@ -127,7 +131,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
             "A plain REFRESH takes ACCESS EXCLUSIVE on the matview, so every query "
             "against it waits for the entire refresh. REFRESH ... CONCURRENTLY "
             "rebuilds it without blocking readers. It requires a UNIQUE index on the "
-            "matview and cannot run inside a transaction block."
+            "matview."
         ),
         suggested_fix=f"REFRESH MATERIALIZED VIEW CONCURRENTLY {name};",
     )
@@ -139,6 +143,12 @@ Notes that matter:
 - **Return early when the risk doesn't apply** (`concurrent` already set; matview
   created in-migration). This is the false-positive discipline the project lives by.
 - **`message` names the object**; **`help` explains the lock and the fix.**
+- **Check every claim about Postgres against a server.** An earlier version of
+  this very rule said `REFRESH ... CONCURRENTLY` can't run inside a transaction
+  block; it can. If the rule gets a `lock_impact` entry, add a matching case to
+  `LOCK_CASES` in `tests/integration/test_postgres_claims.py` — the suite
+  compares the lock you report with the one the server takes, and fails until
+  every entry has a case. A suggested fix should run there too.
 
 ## Step 2b — teach the state machine about your object
 
@@ -160,16 +170,25 @@ Add the branch in `src/safemigrate_lint/core/state.py`, inside
 have run:
 
 ```python
-created = _relation_of(stmt)          # handles CreateStmt + CreateTableAsStmt
-if created is not None:
-    state.relations_created.add(created)
+if isinstance(stmt, (ast.CreateStmt, ast.CreateTableAsStmt)):
+    _fold_create(state, stmt)   # resolves schema + search_path, then records it
+    return
 ```
+
+Record and look up relations only through these helpers (`_resolve`,
+`_record`, `table_known_empty`, ...). They resolve an unqualified name through
+the file's `search_path` and refuse to match when they can't tell — comparing
+bare names by hand is exactly how a new `audit.users` once vouched for an
+existing `public.users`.
 
 This is the general pattern: **if your rule's suppression needs to know something
 earlier statements did, teach `StateBuilder` to record it** (add a field to
 `MigrationState` for anything that isn't a created relation name). Lesson worth
 internalizing — a suppression that references untracked state is a silent
 no-op, not an error, so always add a `safe_` fixture that *proves* it fires.
+The opposite mistake is worse: a fact recorded too eagerly suppresses a real
+hazard. When a statement *might* have changed what you track (a write you can't
+see into, a name you can't resolve), count it against suppression.
 
 ### Which helper to use
 

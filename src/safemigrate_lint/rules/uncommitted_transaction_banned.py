@@ -1,7 +1,8 @@
 """uncommitted-transaction-banned — squawk-equivalent: BEGIN without matching COMMIT.
 
-Fires WARNING on every TransactionStmt(BEGIN/START) in a file whose
-transaction-depth never returns to zero by end-of-file. An unmatched BEGIN
+Fires WARNING on the BEGIN/START that opened the transaction a file leaves open
+at end-of-file — only that one: earlier BEGINs whose transactions were closed
+are fine and are not reported. An unmatched BEGIN
 either (a) leaves the migration tool's auto-wrapping transaction in a
 confused state, or (b) when run via psql/raw libpq, opens a transaction
 that the migration framework can't commit, leaving the connection in an
@@ -44,8 +45,8 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         TransactionStmtKind.TRANS_STMT_START,
     ):
         return
-    if not state.has_unmatched_begin:
-        return
+    if state.unmatched_begin_offset != ctx.statement_offset:
+        return  # this BEGIN's transaction was closed, or nothing is left open
 
     line, column = ctx.line_col()
     yield Finding(

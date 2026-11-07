@@ -5,10 +5,12 @@ that drifts. But it is one *specific* Postgres version's grammar, not all of
 them: pglast vendors a fixed libpg_query, so syntax added in a newer Postgres
 than that one is a parse error here even though a real server accepts it.
 
-`POSTGRES_GRAMMAR_VERSION` reports the version in use, and
-`test_parser_version.py` pins it so an upgrade is a deliberate, visible change
-rather than something a dependency bump does silently. The README documents the
-boundary; the known gap today is PG18 virtual generated columns
+`POSTGRES_GRAMMAR_VERSION` reports the version in use. pyproject.toml caps
+pglast to one major (pglast N vendors Postgres N+10's grammar), so a PyPI
+install, the pre-commit hook and the Action image all parse the same grammar,
+and `test_parser_version.py` pins it so an upgrade is a deliberate, visible
+change rather than something a dependency bump does silently. The README
+documents the boundary; the known gap today is PG18 virtual generated columns
 (`GENERATED ALWAYS AS (...) VIRTUAL`).
 
 On hard parse failure we emit a single syntax-error Finding and the engine
@@ -26,6 +28,7 @@ from pglast import parse_sql
 from pglast.parser import ParseError
 
 from .finding import Finding, Severity
+from .location import line_col, parse_error_index
 
 #: The Postgres grammar this build accepts, as (major, minor). Syntax newer than
 #: this parses as a syntax error even though a real server would accept it.
@@ -63,10 +66,11 @@ def _parse(*, file: str, sql: str) -> ParseResult:
         stmts = parse_sql(sql)
         return ParseResult(file=file, sql=sql, statements=list(stmts), finding=None)
     except ParseError as err:
-        # pglast's ParseError exposes .location (1-indexed byte offset) on recent versions.
-        # We try a couple of attributes defensively; fall back to (1, 0) if unavailable.
-        offset = getattr(err, "location", None) or getattr(err, "cursorpos", None) or 1
-        line, col = _byte_offset_to_line_col(sql, int(offset))
+        # The position is err.args[1], not an attribute — reading `.location`
+        # found nothing, and every syntax error was reported at line 1.
+        index = parse_error_index(sql, err)
+        line, col = line_col(sql, index) if index is not None else (1, 1)
+        message = err.args[0] if err.args else str(err)
         return ParseResult(
             file=file,
             sql=sql,
@@ -77,7 +81,10 @@ def _parse(*, file: str, sql: str) -> ParseResult:
                 file=file,
                 line=line,
                 column=col,
-                message=f"SQL parse failure: {err}",
+                # The bare message: pglast's str() appends ", at index N", a
+                # character index nobody reading the report can use. The
+                # finding's line and column say where it is.
+                message=f"SQL parse failure: {message}",
                 help=(
                     "pglast (libpg_query) could not parse this SQL. Either it is not valid "
                     "Postgres or it contains pre-build extension placeholders (e.g. "
@@ -86,14 +93,3 @@ def _parse(*, file: str, sql: str) -> ParseResult:
             ),
         )
 
-
-def _byte_offset_to_line_col(sql: str, offset_1_indexed: int) -> tuple[int, int]:
-    """Convert pglast's 1-indexed byte offset into a 1-indexed (line, column) pair."""
-    if offset_1_indexed < 1:
-        return (1, 0)
-    offset = min(offset_1_indexed - 1, len(sql))
-    preceding = sql[:offset]
-    line = preceding.count("\n") + 1
-    last_newline = preceding.rfind("\n")
-    column = offset - last_newline - 1 if last_newline >= 0 else offset
-    return (line, max(0, column))

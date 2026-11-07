@@ -59,7 +59,7 @@ The rules were chosen by reading real migration history from Cal.com, Mattermost
 
 That reading informed the rule set; it isn't a published study, and this repo doesn't ship the full corpus or a script to reproduce it. What it does ship is [`fixtures/migrations/`](fixtures/migrations) — 23 real migrations from those projects, each with a committed golden output — so every claim about *this tool's* behavior is reproducible with `pytest`.
 
-Atlas Pro charges $9/dev + $59/CI + $39/db per month for many of these checks. This action ships them free, MIT.
+Atlas lists migration linting and safety checks under its Pro plan: $9 per developer per month, plus $59 per month for each CI/CD project (two target databases included, $39 per month for each additional one), per [atlasgo.io/pricing](https://atlasgo.io/pricing) as of November 2026. This action is free, MIT.
 
 ## Quickstart
 
@@ -103,6 +103,32 @@ The action's step exits non-zero whenever the lint finds anything (so workflows 
 | any critical          | `action_required` | look at this before merging              |
 
 In branch protection, require `safemigrate-lint` (the Check Run name) as a status check. The PR will be blocked on critical findings while warnings stay non-blocking.
+
+### Pull requests from forks
+
+GitHub runs workflows for pull requests from forks with a read-only
+`GITHUB_TOKEN`, whatever the workflow's `permissions:` say. The action still
+lints, and the result is in the job log and the job summary, but it can't post
+the PR comment or create the `safemigrate-lint` Check Run — so a branch
+protection rule that requires that Check Run leaves a fork's PR waiting on a
+check that never arrives. The step logs a warning saying exactly that.
+
+To gate fork PRs as well, make the job itself the check: drop
+`continue-on-error`, set `fail-on`, and require the job (here, `lint`) in branch
+protection instead of the Check Run.
+
+```yaml
+      - uses: Harshith029/safemigrate-lint@v1
+        with:
+          paths: 'migrations/**/*.sql'
+          fail-on: critical          # the job fails on critical findings only
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Don't switch the workflow to `pull_request_target` to get a write token: that
+would run a contributor's SQL through a native parser with write access to your
+repository.
 
 ### Linting only the migrations a PR changed
 
@@ -174,9 +200,10 @@ Runs on staged `*.sql` files and blocks the commit on any finding.
 
 | name       | default              | description                                                          |
 | ---------- | -------------------- | -------------------------------------------------------------------- |
-| `paths`    | (required)           | Glob or newline-separated list of SQL files to lint                  |
+| `paths`    | (required)           | Globs or files, one per line (a name containing spaces needs its own line); a single line may also list several, space-separated |
 | `severity` | `critical,warning`   | Comma-separated severity levels to include: `critical,warning,style` |
 | `format`   | `json`               | Output format for the action log: `json` or `markdown`               |
+| `fail-on`  | `any`                | Which findings fail the step: `any`, `critical`, or `never`. Input errors always fail it |
 
 ### Outputs
 
@@ -185,6 +212,9 @@ Runs on staged `*.sql` files and blocks the commit on any finding.
 | `findings-count` | integer             | Total findings emitted after severity filter      |
 | `has-critical`   | `"true"` / `"false"`| Whether any critical-severity finding was emitted |
 
+The report also goes to the job summary. Each finding's `line` and `column` are
+1-based and point at the first keyword of the statement it concerns.
+
 ### Required permissions
 
 | scope                   | needed for                                |
@@ -192,6 +222,9 @@ Runs on staged `*.sql` files and blocks the commit on any finding.
 | `contents: read`        | checking out migration files              |
 | `pull-requests: write`  | posting / editing the PR comment          |
 | `checks: write`         | creating the Check Run                    |
+
+Pull requests from forks never get the two write permissions — see
+[Pull requests from forks](#pull-requests-from-forks).
 
 ### Lock impact
 
@@ -251,7 +284,34 @@ rather than a reimplementation. But it's one **specific** version's parser:
 If you write PG 18-only syntax, the affected file reports a `syntax-error`
 finding rather than being silently skipped. The version is pinned by a test, so
 upgrading it is a deliberate change rather than a side effect of a dependency
-bump.
+bump — and the package depends on `pglast>=7.20,<8`, so a PyPI install, the
+pre-commit hook and the Action image all parse the same PostgreSQL 17 grammar.
+(Earlier releases allowed any newer pglast, and a fresh install could pick up a
+PostgreSQL 18 grammar instead.)
+
+### Cross-statement context: what it assumes
+
+Suppression — "this ALTER is cheap because the table was created earlier in this
+file and is still empty" — only applies when the file itself establishes both
+halves. Where it can't, the finding is reported.
+
+- **Which relation a name means.** Names are compared schema-qualified. An
+  unqualified name follows `SET search_path` / `set_config('search_path', ...)`
+  in the file; under the default path it means `public`. When the path is empty
+  or computed at run time, unqualified names match nothing. Indexes are matched
+  in their table's schema; `DROP`, `RENAME` and `SET SCHEMA` are followed.
+- **Whether it's still empty.** `INSERT`, `COPY ... FROM` and `MERGE` (including
+  inside a `WITH` clause), `CREATE TABLE AS`, `REFRESH MATERIALIZED VIEW`, and
+  attaching a populated partition or inheritance child all count as writes. A
+  `DO` block that can write, `CALL`, and `EXECUTE` are opaque, so they count as
+  writing to everything created before them.
+- **Not visible at all:** rows written by a function called from a `SELECT`, by
+  a trigger or by a rule; and `CREATE TABLE IF NOT EXISTS` is taken at its word.
+- **Transactions are the ones written in the file.** `BEGIN`/`COMMIT` are
+  tracked; a transaction your migration runner wraps around each file is not.
+  If your runner does that, `CREATE INDEX CONCURRENTLY` and the other
+  `CONCURRENTLY` forms fail inside it — give each one its own migration with the
+  runner's no-transaction option.
 
 ### Inline suppression
 

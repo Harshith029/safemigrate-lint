@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..core.finding import Finding, Severity
+from ..core.location import statement_line_col
 from ..core.state import MigrationState
 
 
@@ -21,40 +22,17 @@ class RuleContext:
 
     file: str
     sql: str
-    statement_offset: int  # 1-indexed byte offset of statement start in source SQL
+    # pglast's stmt_location + 1: a 1-based *character* offset (pglast converts
+    # libpg_query's byte offsets). Also the key inline suppressions use.
+    statement_offset: int
 
     def line_col(self) -> tuple[int, int]:
-        """Compute 1-indexed (line, column) of the statement's KEYWORD.
+        """1-based (line, column) of the statement's first keyword.
 
-        pglast's `stmt_location` can point at leading whitespace or comments
-        owned by the statement, not at the keyword itself. We advance past
-        whitespace and `-- line comments` to find the actual keyword position.
-        Block comments (`/* ... */`) are uncommon in migrations and not handled.
+        pglast's location usually points at the end of the previous statement,
+        so whitespace and comments (`--` and `/* */`) are skipped first.
         """
-        if self.statement_offset < 1:
-            return (1, 0)
-        # Start at the 0-indexed offset.
-        offset = min(self.statement_offset - 1, len(self.sql))
-        # Advance past whitespace / line comments.
-        sql = self.sql
-        n = len(sql)
-        while offset < n:
-            ch = sql[offset]
-            if ch in " \t\r\n":
-                offset += 1
-                continue
-            if ch == "-" and offset + 1 < n and sql[offset + 1] == "-":
-                # Line comment — skip to next newline.
-                nl = sql.find("\n", offset)
-                offset = n if nl == -1 else nl + 1
-                continue
-            break
-        # Compute line/col from offset.
-        preceding = sql[:offset]
-        line = preceding.count("\n") + 1
-        last_nl = preceding.rfind("\n")
-        column = offset - last_nl - 1 if last_nl >= 0 else offset
-        return (line, max(0, column))
+        return statement_line_col(self.sql, max(0, self.statement_offset - 1))
 
 
 CheckFn = Callable[[Any, MigrationState, RuleContext], Iterator[Finding]]

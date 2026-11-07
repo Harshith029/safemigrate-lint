@@ -6,7 +6,23 @@ name-extraction behavior identical everywhere.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any
+
+from pglast import ast
+
+
+def iter_nodes(root: Any) -> Iterator[ast.Node]:
+    """Every pglast AST node under `root`, `root` included."""
+    stack: list[Any] = [root]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (list, tuple)):
+            stack.extend(node)
+        elif isinstance(node, ast.Node):
+            yield node
+            # Iterating a pglast node yields its attribute names.
+            stack.extend(getattr(node, attr, None) for attr in node)
 
 
 def table_name(relation: Any) -> str:
@@ -33,8 +49,3 @@ def qualified_name(name_parts: Any) -> str:
         if sval:
             parts.append(sval)
     return ".".join(parts)
-
-
-def bare(name: str) -> str:
-    """Drop the schema prefix from a possibly-qualified name (``a.b`` -> ``b``)."""
-    return name.rsplit(".", 1)[-1] if "." in name else name

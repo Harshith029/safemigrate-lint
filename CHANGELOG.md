@@ -3,6 +3,89 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Responds to the second external audit (2026-11, backlog SAF-01 … SAF-09). Each
+finding was reproduced before being acted on — the PostgreSQL ones on real
+14, 15, 16, 17 and 18 servers — and those claims are now checked there in CI.
+**Output changes:** columns are 1-based, and some findings that were wrongly
+suppressed now appear; see Changed.
+
+### Fixed
+
+- **The identity-column fix failed on a real server, and patched by hand it
+  duplicated ids.** `identity-column-add-rewrites` suggested backfilling from a
+  separate sequence, then `ALTER COLUMN ... ADD GENERATED AS IDENTITY` — which
+  PostgreSQL rejects until the column is NOT NULL; with NOT NULL added, the new
+  identity numbered rows from 1 again (500 distinct ids across 501 rows in the
+  reproduction), and the suggested batching `UPDATE ... ORDER BY ... LIMIT` is
+  not valid PostgreSQL. The fix is now four steps — sequence default, batched
+  backfill by `ctid`, NOT NULL via a validated CHECK, then one transaction that
+  drops the default, adds the identity and `setval`s it past the backfill — and
+  keeps the migration's own type, `ALWAYS`/`BY DEFAULT` and sequence options.
+  Run end to end on PostgreSQL 14–18: no rewrite, no duplicate ids.
+- **`CREATE INDEX` was described as taking ACCESS EXCLUSIVE.** It takes SHARE:
+  writes wait, reads continue. The lock table already said SHARE; the rule's doc
+  and help now agree, and a test fails if a rule's prose names a stronger lock
+  than its table entry.
+- **`REFRESH MATERIALIZED VIEW CONCURRENTLY` was said to be unable to run in a
+  transaction block.** It can (unlike `CREATE INDEX CONCURRENTLY`). Removed from
+  the rule, its lock note, and the rule-writing guide. `REINDEX` prose now puts
+  ACCESS EXCLUSIVE on the index and SHARE on the table, and says why reads still
+  stall (planning locks every index of the table — measured).
+- **Suppression could still rest on unproven premises.** A table counted as
+  empty after `MERGE`, an `INSERT` inside a `WITH` clause, or procedural code
+  (`DO` blocks that can write, `CALL`, `EXECUTE`); a `WITH NO DATA` matview
+  stayed empty after `REFRESH`; attaching a populated partition or inheritance
+  child didn't count. Names ignored `SET search_path`/`set_config`, so after a
+  path change a bare name could vouch for the wrong schema's table; indexes were
+  matched by bare name, so `audit.idx` excused dropping `public.idx`;
+  `refresh-matview-blocks-reads` dropped the schema entirely; a temp table could
+  vouch for a permanent one; and `DROP`, `RENAME` and `SET SCHEMA` weren't
+  followed. Each case is now a regression test, and where the file doesn't prove
+  identity or emptiness the finding is reported.
+- **Every `BEGIN` was flagged when one was left open.** Only the BEGIN whose
+  transaction is still open at end-of-file is reported now. `COMMIT AND CHAIN`
+  keeps the transaction open and `PREPARE TRANSACTION` closes it.
+- **Every syntax error was reported at line 1.** The parser looked for a
+  `.location` attribute pglast's `ParseError` doesn't have. Errors now point at
+  the offending token, including after multi-byte text, where pglast itself
+  shifts the position (corrected here, and probed so a pglast fix can't break it).
+- **Block comments before a statement** (`/* ... */`, nested too) moved its
+  reported position to the comment; they are skipped like `--` comments.
+- **A file name could break out of the PR comment's location span** with a
+  backtick or newline. File names are escaped like the SQL-derived text.
+- **A migration line starting with `::` reached the runner as a workflow
+  command** when the action printed a markdown report. Command processing is now
+  paused around the report.
+- The Action split `paths` on all whitespace, so a file name containing a space
+  couldn't be passed; one per line now works, and space-separated single lines
+  work as before.
+
+### Changed
+
+- **Columns are 1-based**, as the code always documented and as editors and
+  GitHub annotations expect. Every `column` in JSON output is one higher.
+- **pglast is pinned to `>=7.20,<8`** (PostgreSQL 17 grammar). `>=6.0` let a
+  PyPI or pre-commit install resolve pglast 8 and parse PostgreSQL 18 grammar,
+  unlike the tested lockfile; the lockfile moves from 7.13 — which PyPI's index
+  no longer lists — to 7.22.
+
+### Added
+
+- **`fail-on` input** (`any`, the default; `critical`; `never`). With
+  `critical` and no `continue-on-error`, the job itself is a merge gate that also
+  works on pull requests from forks, which only get a read-only token.
+- **Fork pull requests are explained, not just logged.** When GitHub refuses the
+  comment or Check Run on a fork PR, the step emits a warning saying why and what
+  to require instead. The report is also written to the job summary, which needs
+  no write permission.
+- **`tests/integration`**: every `lock_impact` the linter reports is compared
+  with the lock PostgreSQL actually holds, the `CONCURRENTLY` transaction-block
+  claims are executed, and the identity fix runs end to end. CI runs it on
+  PostgreSQL 14–18 (`postgres` job), and tests both ends of the pglast range
+  without the lockfile (`dependency-range` job).
+
 ## [1.3.0] — 2026-08-16
 
 Completes the response to the external audit. **Default output changes** — see
