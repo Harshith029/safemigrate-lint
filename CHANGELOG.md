@@ -3,7 +3,7 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.0] - 2026-11-22
 
 Responds to the second external audit (2026-11, backlog SAF-01 … SAF-09). Each
 finding was reproduced before being acted on — the PostgreSQL ones on real
@@ -85,6 +85,16 @@ suppressed now appear; see Changed.
   claims are executed, and the identity fix runs end to end. CI runs it on
   PostgreSQL 14–18 (`postgres` job), and tests both ends of the pglast range
   without the lockfile (`dependency-range` job).
+
+### Internal
+
+- Tests 212 → 342, plus 35 in `tests/integration` that need a real PostgreSQL.
+- The codebase is formatted with `ruff format`, and CI fails on unformatted
+  code.
+- CI measures coverage with pytest-cov and fails below 90%; this release is at
+  92.48%.
+- A test fails when the README's rule counts (39 rules: 14 critical, 18
+  warning, 7 style) stop matching the rule registry.
 
 ## [1.3.0] — 2026-08-16
 
@@ -369,6 +379,7 @@ Where safemigrate-lint adds coverage Atlas Pro paywalls or squawk doesn't ship:
 - JSON: sorted findings array with `rule_id`, `severity`, `file`, `line`, `column`, `message`, `help`, `suggested_fix`
 - Markdown: severity-grouped sections with code excerpts, help text, and suggested-fix blocks
 
+[1.4.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.4.0
 [1.3.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.3.0
 [1.2.1]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.2.1
 [1.2.0]: https://github.com/Harshith029/safemigrate-lint/releases/tag/v1.2.0
