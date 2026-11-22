@@ -27,7 +27,7 @@ RULE_ID = "drop-column-restricted"
 
 @register_rule(
     id=RULE_ID,
-    severity=Severity.CRITICAL,
+    severity=Severity.WARNING,
     applies_to=(ast.AlterTableStmt,),
     doc=(
         "ALTER TABLE DROP COLUMN is irreversible data loss on populated tables. "
@@ -53,7 +53,7 @@ def check(stmt: Any, state: MigrationState, ctx: RuleContext) -> Iterator[Findin
         if_exists = " IF EXISTS" if getattr(cmd, "missing_ok", False) else ""
         yield Finding(
             rule_id=RULE_ID,
-            severity=Severity.CRITICAL,
+            severity=Severity.WARNING,
             file=ctx.file,
             line=line,
             column=col_offset,
