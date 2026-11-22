@@ -72,16 +72,47 @@ uv run pytest --cov           # coverage; fails below the 90% floor in pyproject
 
 CI runs the same checks on every PR.
 
-Claims about PostgreSQL itself — the lock each finding reports, what may run in
-a transaction block, whether a suggested fix works — are checked against a real
-server in `tests/integration`, which is skipped unless you point it at a
-**disposable** database (it creates and drops schemas):
+## Integration tests
+
+Claims about PostgreSQL itself (the lock each finding reports, what may run in
+a transaction block, whether a suggested fix works) are checked against a real
+server in `tests/integration`. Those tests run only when both of these hold, and
+are skipped otherwise:
+
+- **psycopg is installed.** It is in the `integration` dependency group, which
+  uv installs only when asked (`--group integration`). Without it, pytest
+  reports the whole module as one skip: `could not import 'psycopg'`.
+- **`SAFEMIGRATE_TEST_PG_DSN` points at a disposable server.** The tests create
+  and drop the schemas `smlint_it` and `smlint_identity`. Without the variable,
+  every test is skipped with `set SAFEMIGRATE_TEST_PG_DSN ...`.
+
+To run them against PostgreSQL 16 in Docker:
 
 ```bash
-docker run -d --name pg17 -e POSTGRES_HOST_AUTH_METHOD=trust -p 127.0.0.1:5432:5432 postgres:17
-uv sync --group integration
-SAFEMIGRATE_TEST_PG_DSN=postgresql://postgres@127.0.0.1:5432/postgres uv run pytest tests/integration
+docker run --rm -d --name smlint-pg -e POSTGRES_HOST_AUTH_METHOD=trust -p 127.0.0.1:55432:5432 postgres:16
+docker exec smlint-pg sh -c "until pg_isready -q -h 127.0.0.1 -U postgres; do sleep 1; done"
+SAFEMIGRATE_TEST_PG_DSN=postgresql://postgres@127.0.0.1:55432/postgres uv run --group integration pytest tests/integration -v -rs
+docker stop smlint-pg         # --rm then deletes the container
 ```
+
+In PowerShell the `docker` lines are the same. Replace the third line with:
+
+```powershell
+$env:SAFEMIGRATE_TEST_PG_DSN = "postgresql://postgres@127.0.0.1:55432/postgres"
+uv run --group integration pytest tests/integration -v -rs
+```
+
+On PostgreSQL 15 to 18 every test passes and none is skipped. On 14, one lock
+check is skipped because `ALTER TABLE ... SET ACCESS METHOD` needs 15. `-rs`
+prints the reason for every skip, so a misconfigured run says which condition
+is missing. The `docker exec` line waits until the server accepts TCP
+connections. Port 55432 avoids a local PostgreSQL on 5432; any free port works
+if the DSN matches. Trust authentication accepts any connection, which is why
+the port is bound to 127.0.0.1 only.
+
+`--group integration` leaves psycopg installed, so a later plain `uv run pytest`
+lists each integration test as skipped instead of one module skip. `uv sync`
+removes it again.
 
 CI's `postgres` job runs it against every supported major (14–18), and its
 `dependency-range` job tests the oldest and newest pglast that pyproject allows,

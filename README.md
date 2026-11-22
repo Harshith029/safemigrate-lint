@@ -358,6 +358,10 @@ Contributions welcome — especially new rules and false-positive reports. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup and rule philosophy, and
 [docs/writing-a-rule.md](docs/writing-a-rule.md) for a step-by-step rule walkthrough.
 
+The integration tests check the linter's PostgreSQL claims against a real server
+and are skipped unless psycopg is installed and `SAFEMIGRATE_TEST_PG_DSN` is set;
+[CONTRIBUTING.md](CONTRIBUTING.md#integration-tests) has the exact commands.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
